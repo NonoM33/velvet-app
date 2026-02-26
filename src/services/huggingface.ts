@@ -35,8 +35,14 @@ export async function sendChatMessage(
   const prompt = formatMessagesForMistral(messages);
 
   try {
+    // Use proxy in production to avoid CORS, direct in dev
+    const isWeb = typeof window !== 'undefined' && window.location?.hostname !== 'localhost';
+    const baseUrl = isWeb 
+      ? `${window.location.origin}/api/hf/models/${MODEL_ID}`
+      : `https://api-inference.huggingface.co/models/${MODEL_ID}`;
+    
     const response = await fetch(
-      `https://api-inference.huggingface.co/models/${MODEL_ID}`,
+      baseUrl,
       {
         method: 'POST',
         headers: {
