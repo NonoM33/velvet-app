@@ -13,12 +13,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { GlassCard, AnimatedCounter } from '../../src/components';
+import { GlassCard, AnimatedCounter, showToast } from '../../src/components';
 import { useStore } from '../../src/store/store';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../src/constants/theme';
+import { demoToasts } from '../../src/services/demoData';
 
 export default function ProfileScreen() {
-  const { user, setUser } = useStore();
+  const { user, setUser, demoMode, activateDemo } = useStore();
+
+  const handleStartDemo = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    showToast(demoToasts.demoStarted, 'info');
+    activateDemo();
+  };
 
   const handleToggle = (key: keyof typeof user.preferences.notifications) => {
     if (Platform.OS !== 'web') {
@@ -403,8 +412,46 @@ export default function ProfileScreen() {
             </GlassCard>
           </Animated.View>
 
-          {/* App Info */}
+          {/* Demo Mode */}
           <Animated.View entering={FadeInDown.delay(500).duration(400)}>
+            <Text style={styles.sectionTitle}>Mode Démo</Text>
+            <GlassCard variant="ai" animated={false}>
+              <View style={styles.demoModeCard}>
+                <View style={styles.demoModeHeader}>
+                  <LinearGradient
+                    colors={[Colors.primary, Colors.primaryDark]}
+                    style={styles.demoModeIcon}
+                  >
+                    <Ionicons name="videocam" size={24} color="#FFF" />
+                  </LinearGradient>
+                  <View style={styles.demoModeInfo}>
+                    <Text style={styles.demoModeTitle}>Présentation Live</Text>
+                    <Text style={styles.demoModeDescription}>
+                      Lancez une démo interactive avec 5 scénarios impressionnants
+                    </Text>
+                  </View>
+                </View>
+                <Pressable
+                  style={[styles.demoButton, demoMode && styles.demoButtonDisabled]}
+                  onPress={handleStartDemo}
+                  disabled={demoMode}
+                >
+                  <LinearGradient
+                    colors={demoMode ? [Colors.textMuted, Colors.textMuted] : [Colors.primary, Colors.primaryDark]}
+                    style={styles.demoButtonGradient}
+                  >
+                    <Text style={styles.demoButtonIcon}>🎬</Text>
+                    <Text style={styles.demoButtonText}>
+                      {demoMode ? 'Démo en cours...' : 'Lancer la démo'}
+                    </Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            </GlassCard>
+          </Animated.View>
+
+          {/* App Info */}
+          <Animated.View entering={FadeInDown.delay(600).duration(400)}>
             <GlassCard style={styles.appInfo} variant="flat">
               <View style={styles.appInfoContent}>
                 <LinearGradient
@@ -642,6 +689,57 @@ const styles = StyleSheet.create({
   segmentTextActive: {
     color: '#fff',
     fontWeight: '600',
+  },
+  // Demo Mode
+  demoModeCard: {
+    gap: Spacing.md,
+  },
+  demoModeHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.md,
+  },
+  demoModeIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  demoModeInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  demoModeTitle: {
+    ...Typography.bodyBold,
+    color: Colors.textPrimary,
+  },
+  demoModeDescription: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  demoButton: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    ...Shadows.glow,
+  },
+  demoButtonDisabled: {
+    opacity: 0.7,
+  },
+  demoButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+  },
+  demoButtonIcon: {
+    fontSize: 20,
+  },
+  demoButtonText: {
+    ...Typography.bodyBold,
+    color: '#FFF',
   },
   appInfo: {
     marginTop: Spacing.lg,

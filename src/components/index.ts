@@ -7,3 +7,6 @@ export { ChatBubble, TypingIndicator } from './ChatBubble';
 export { TabBar } from './TabBar';
 export { Toast, ToastProvider, showToast, hideToast } from './Toast';
 export { BookingModal } from './BookingModal';
+export { DemoToast, DemoNotification } from './DemoToast';
+export { DemoOverlay } from './DemoOverlay';
+export { DemoControlFAB } from './DemoControlFAB';

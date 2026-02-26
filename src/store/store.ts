@@ -35,6 +35,16 @@ interface AppState {
   // UI State
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+
+  // Demo Mode
+  demoMode: boolean;
+  demoScenario: string | null;
+  demoScenarioIndex: number;
+  activateDemo: () => void;
+  deactivateDemo: () => void;
+  setDemoScenario: (scenario: string | null) => void;
+  setDemoScenarioIndex: (index: number) => void;
+  nextDemoScenario: () => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -111,4 +121,14 @@ export const useStore = create<AppState>((set) => ({
   // UI State
   isLoading: false,
   setIsLoading: (loading) => set({ isLoading: loading }),
+
+  // Demo Mode
+  demoMode: false,
+  demoScenario: null,
+  demoScenarioIndex: 0,
+  activateDemo: () => set({ demoMode: true, demoScenarioIndex: 0, demoScenario: null }),
+  deactivateDemo: () => set({ demoMode: false, demoScenario: null, demoScenarioIndex: 0 }),
+  setDemoScenario: (scenario) => set({ demoScenario: scenario }),
+  setDemoScenarioIndex: (index) => set({ demoScenarioIndex: index }),
+  nextDemoScenario: () => set((state) => ({ demoScenarioIndex: state.demoScenarioIndex + 1 })),
 }));

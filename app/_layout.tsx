@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
 import { Colors } from '../src/constants/theme';
-import { ToastProvider } from '../src/components';
+import { ToastProvider, DemoOverlay, DemoControlFAB } from '../src/components';
 
 export default function RootLayout() {
   return (
@@ -33,6 +33,8 @@ export default function RootLayout() {
             }}
           />
         </Stack>
+        <DemoOverlay />
+        <DemoControlFAB />
       </ToastProvider>
     </GestureHandlerRootView>
   );
