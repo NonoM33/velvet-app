@@ -1,13 +1,12 @@
 import React from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInRight } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { GlassCard } from './GlassCard';
 import { OccupancyGauge } from './OccupancyGauge';
 import { Train } from '../services/types';
 import { formatDuration, formatTime } from '../services/navitia';
-import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../constants/theme';
 
 interface TrainCardProps {
   train: Train;
@@ -32,31 +31,55 @@ export function TrainCard({
 
   const getPriceLabel = () => {
     if (train.priceRecommendation === 'buy_now') return 'Acheter maintenant';
-    if (train.priceRecommendation === 'wait') return 'Attendre';
+    if (train.priceRecommendation === 'wait') return 'Prix va baisser ↓';
     return null;
   };
 
+  // AI Score calculation (simplified demo)
+  const getAIScore = () => {
+    let score = 70;
+    if (train.price <= 29) score += 20;
+    else if (train.price <= 45) score += 10;
+    if (train.priceRecommendation === 'buy_now') score += 10;
+    if (train.occupancy === 'low') score += 5;
+    return Math.min(score, 100);
+  };
+
+  const aiScore = getAIScore();
+
   return (
     <Animated.View entering={FadeInRight.delay(delay).duration(300)}>
-      <GlassCard onPress={onPress} animated={false}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.cardContainer,
+          pressed && styles.cardPressed,
+        ]}
+      >
         <View style={styles.container}>
-          {/* Top row: Train number and recommendation */}
+          {/* Top row: Train number, AI badge, and occupancy */}
           <View style={styles.topRow}>
             <View style={styles.trainInfo}>
               <Text style={styles.trainNumber}>{train.trainNumber}</Text>
               {train.isRecommended && showRecommendation && (
                 <LinearGradient
-                  colors={[Colors.primaryStart, Colors.primaryEnd]}
+                  colors={[Colors.primary, Colors.primaryDark]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.recommendedBadge}
                 >
-                  <Ionicons name="star" size={10} color="#fff" />
-                  <Text style={styles.recommendedText}>Recommandé</Text>
+                  <Ionicons name="sparkles" size={10} color="#fff" />
+                  <Text style={styles.recommendedText}>IA recommande</Text>
                 </LinearGradient>
               )}
             </View>
-            <OccupancyGauge level={train.occupancy} />
+            <View style={styles.scoreAndOccupancy}>
+              <View style={styles.aiScoreBadge}>
+                <Text style={styles.aiScoreText}>{aiScore}</Text>
+                <Text style={styles.aiScoreLabel}>Score IA</Text>
+              </View>
+              <OccupancyGauge level={train.occupancy} />
+            </View>
           </View>
 
           {/* Main content: Times and route */}
@@ -78,7 +101,7 @@ export function TrainCard({
                 <Text style={styles.durationText}>{formatDuration(train.duration)}</Text>
               </View>
               <View style={styles.line} />
-              <Ionicons name="train" size={16} color={Colors.primaryEnd} />
+              <Ionicons name="train" size={16} color={Colors.primary} />
             </View>
 
             <View style={[styles.timeBlock, styles.timeBlockRight]}>
@@ -92,7 +115,7 @@ export function TrainCard({
             </View>
           </View>
 
-          {/* Bottom row: Price and action */}
+          {/* Bottom row: Price and AI recommendation */}
           <View style={styles.bottomRow}>
             <View style={styles.priceContainer}>
               <Text style={[styles.price, { color: getPriceColor() }]}>
@@ -110,8 +133,8 @@ export function TrainCard({
                   {
                     backgroundColor:
                       train.priceRecommendation === 'buy_now'
-                        ? Colors.success + '20'
-                        : Colors.warning + '20',
+                        ? Colors.successLight
+                        : Colors.warningLight,
                   },
                 ]}
               >
@@ -119,7 +142,7 @@ export function TrainCard({
                   name={
                     train.priceRecommendation === 'buy_now'
                       ? 'checkmark-circle'
-                      : 'time'
+                      : 'trending-down'
                   }
                   size={14}
                   color={
@@ -147,47 +170,47 @@ export function TrainCard({
             {!compact && (
               <View style={styles.amenities}>
                 {train.amenities.includes('wifi') && (
-                  <Ionicons
-                    name="wifi"
-                    size={14}
-                    color={Colors.textMuted}
-                    style={styles.amenityIcon}
-                  />
+                  <View style={styles.amenityBadge}>
+                    <Ionicons name="wifi" size={12} color={Colors.textMuted} />
+                  </View>
                 )}
                 {train.amenities.includes('power') && (
-                  <Ionicons
-                    name="flash"
-                    size={14}
-                    color={Colors.textMuted}
-                    style={styles.amenityIcon}
-                  />
+                  <View style={styles.amenityBadge}>
+                    <Ionicons name="flash" size={12} color={Colors.textMuted} />
+                  </View>
                 )}
                 {train.amenities.includes('bar') && (
-                  <Ionicons
-                    name="restaurant"
-                    size={14}
-                    color={Colors.textMuted}
-                    style={styles.amenityIcon}
-                  />
+                  <View style={styles.amenityBadge}>
+                    <Ionicons name="restaurant" size={12} color={Colors.textMuted} />
+                  </View>
                 )}
                 {train.amenities.includes('quiet') && (
-                  <Ionicons
-                    name="volume-mute"
-                    size={14}
-                    color={Colors.textMuted}
-                    style={styles.amenityIcon}
-                  />
+                  <View style={styles.amenityBadge}>
+                    <Ionicons name="volume-mute" size={12} color={Colors.textMuted} />
+                  </View>
                 )}
               </View>
             )}
           </View>
         </View>
-      </GlassCard>
+      </Pressable>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  cardContainer: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: BorderRadius.lg,
+    ...Shadows.small,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    padding: Spacing.md,
+  },
+  cardPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
+  },
   container: {
     gap: Spacing.sm,
   },
@@ -204,19 +227,42 @@ const styles = StyleSheet.create({
   trainNumber: {
     ...Typography.caption,
     color: Colors.textSecondary,
+    fontWeight: '500',
   },
   recommendedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: 4,
     borderRadius: BorderRadius.full,
   },
   recommendedText: {
     ...Typography.small,
     color: '#fff',
     fontWeight: '600',
+  },
+  scoreAndOccupancy: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  aiScoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.aiGlow,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+  },
+  aiScoreText: {
+    ...Typography.smallBold,
+    color: Colors.primary,
+  },
+  aiScoreLabel: {
+    ...Typography.small,
+    color: Colors.primary,
   },
   mainContent: {
     flexDirection: 'row',
@@ -254,15 +300,15 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.primaryEnd,
+    backgroundColor: Colors.primary,
   },
   line: {
     flex: 1,
     height: 2,
-    backgroundColor: Colors.glassBorder,
+    backgroundColor: Colors.divider,
   },
   durationBadge: {
-    backgroundColor: Colors.backgroundLight,
+    backgroundColor: Colors.backgroundTertiary,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: BorderRadius.sm,
@@ -277,9 +323,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Spacing.xs,
+    paddingTop: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: Colors.glassBorder,
+    borderTopColor: Colors.divider,
   },
   priceContainer: {
     flexDirection: 'row',
@@ -309,9 +355,14 @@ const styles = StyleSheet.create({
   },
   amenities: {
     flexDirection: 'row',
-    gap: Spacing.xs,
+    gap: 4,
   },
-  amenityIcon: {
-    marginLeft: 2,
+  amenityBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.backgroundTertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -1,41 +1,64 @@
 export const Colors = {
-  // Primary gradient
-  primaryStart: '#6C3CE9',
-  primaryEnd: '#8B5CF6',
+  // Velvet Brand Colors
+  primary: '#F0AAFF', // Soft pink/violet - signature color
+  primaryLight: '#F8D4FF',
+  primaryDark: '#D580E8',
 
-  // Gold accent
-  gold: '#F5A623',
-  goldLight: '#FFCC66',
+  // Navy accent
+  navy: '#003399',
+  navyLight: '#1A4DB3',
+  navyDark: '#002266',
 
-  // Background colors
-  background: '#0D0D1A',
-  backgroundLight: '#1A1A2E',
-  backgroundCard: 'rgba(30, 30, 50, 0.6)',
+  // Background colors - Light & Airy
+  background: '#FFFFFF',
+  backgroundSecondary: '#FAFAFE',
+  backgroundTertiary: '#F5F5FA',
+  backgroundGradientStart: '#FFFFFF',
+  backgroundGradientEnd: '#FDF5FF', // Very light pink tint
 
-  // Glass effect colors
-  glassBorder: 'rgba(255, 255, 255, 0.1)',
-  glassBackground: 'rgba(255, 255, 255, 0.05)',
+  // Card colors
+  cardBackground: '#FFFFFF',
+  cardBorder: 'rgba(0, 51, 153, 0.08)',
+  cardShadow: 'rgba(0, 51, 153, 0.08)',
 
   // Text colors
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.5)',
+  textPrimary: '#003399', // Navy for headings
+  textSecondary: '#4A5568',
+  textMuted: '#9CA3AF',
+  textLight: '#FFFFFF',
 
   // Status colors
-  success: '#22C55E',
+  success: '#10B981',
+  successLight: '#D1FAE5',
   warning: '#F59E0B',
+  warningLight: '#FEF3C7',
   error: '#EF4444',
+  errorLight: '#FEE2E2',
   info: '#3B82F6',
+  infoLight: '#DBEAFE',
 
   // Price colors
-  priceGreen: '#22C55E',
+  priceGreen: '#10B981',
   priceOrange: '#F59E0B',
   priceRed: '#EF4444',
 
   // Occupancy colors
-  occupancyLow: '#22C55E',
+  occupancyLow: '#10B981',
   occupancyMedium: '#F59E0B',
   occupancyHigh: '#EF4444',
+
+  // AI Feature colors
+  aiAccent: '#F0AAFF',
+  aiGlow: 'rgba(240, 170, 255, 0.2)',
+  aiGradientStart: '#F0AAFF',
+  aiGradientEnd: '#D580E8',
+
+  // Interactive states
+  pressed: 'rgba(240, 170, 255, 0.1)',
+  hover: 'rgba(240, 170, 255, 0.05)',
+
+  // Dividers
+  divider: 'rgba(0, 51, 153, 0.08)',
 };
 
 export const Spacing = {
@@ -52,6 +75,7 @@ export const BorderRadius = {
   md: 12,
   lg: 16,
   xl: 20,
+  xxl: 24,
   full: 9999,
 };
 
@@ -86,32 +110,49 @@ export const Typography = {
     fontWeight: '400' as const,
     lineHeight: 20,
   },
+  captionBold: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    lineHeight: 20,
+  },
   small: {
     fontSize: 12,
     fontWeight: '400' as const,
+    lineHeight: 16,
+  },
+  smallBold: {
+    fontSize: 12,
+    fontWeight: '600' as const,
     lineHeight: 16,
   },
 };
 
 export const Shadows = {
   small: {
-    shadowColor: '#000',
+    shadowColor: '#003399',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
   },
   medium: {
-    shadowColor: '#000',
+    shadowColor: '#003399',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
     elevation: 4,
   },
   large: {
-    shadowColor: '#6C3CE9',
+    shadowColor: '#003399',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  glow: {
+    shadowColor: '#F0AAFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
   },

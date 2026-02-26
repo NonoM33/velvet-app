@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -21,8 +20,8 @@ import { useStore } from '../../src/store/store';
 import { sendChatMessage, detectTrainQuery } from '../../src/services/huggingface';
 import { searchTrainsByCity } from '../../src/services/navitia';
 import { ChatMessage, Train } from '../../src/services/types';
-import { chatSuggestions, parisBordeauxTrains } from '../../src/services/mockData';
-import { Colors, Spacing, Typography, BorderRadius } from '../../src/constants/theme';
+import { chatSuggestions } from '../../src/services/mockData';
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../src/constants/theme';
 
 export default function ChatScreen() {
   const { chatMessages, addChatMessage, isTyping, setIsTyping } = useStore();
@@ -30,7 +29,6 @@ export default function ChatScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    // Scroll to bottom when new messages arrive
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
@@ -56,7 +54,6 @@ export default function ChatScreen() {
     setIsTyping(true);
 
     try {
-      // Detect if this is a train search query
       const queryInfo = detectTrainQuery(messageText);
 
       let responseContent: string;
@@ -64,22 +61,20 @@ export default function ChatScreen() {
       let suggestions: string[] | undefined;
 
       if (queryInfo.isTrainQuery && queryInfo.origin && queryInfo.destination) {
-        // Search for trains
         const trains = await searchTrainsByCity(queryInfo.origin, queryInfo.destination);
 
         if (trains.length > 0) {
-          responseContent = `Voilà ce que j'ai trouvé pour ${queryInfo.origin} → ${queryInfo.destination} ! 🚄\n\nJ'ai ${trains.length} trains disponibles. Voici les meilleures options :`;
+          responseContent = `Voilà ce que j'ai trouvé pour ${queryInfo.origin} → ${queryInfo.destination} ! 🚄\n\nJ'ai analysé ${trains.length} trains et voici les meilleures options selon l'IA :`;
           trainCards = trains.slice(0, 3).map((train) => ({
             type: 'train' as const,
             train,
           }));
-          suggestions = ['Voir tous les trains', 'Créer une alerte prix', 'Autre trajet'];
+          suggestions = ['Meilleur prix cette semaine', 'Train le plus rapide', 'Prédiction de prix'];
         } else {
           responseContent = `Je n'ai pas trouvé de trains directs pour ${queryInfo.origin} → ${queryInfo.destination}. Essaie avec une autre destination ! 🤔`;
           suggestions = ['Paris → Bordeaux', 'Paris → Nantes', 'Paris → Rennes'];
         }
       } else {
-        // Use HuggingFace API for general chat
         const conversationHistory = chatMessages
           .filter((m) => m.id !== 'welcome')
           .slice(-6)
@@ -90,7 +85,6 @@ export default function ChatScreen() {
 
         responseContent = await sendChatMessage(messageText, conversationHistory);
 
-        // Add relevant suggestions based on response
         if (responseContent.toLowerCase().includes('prix') || responseContent.toLowerCase().includes('billet')) {
           suggestions = ['Voir les prix', 'Créer une alerte', 'Meilleur moment pour acheter'];
         } else if (responseContent.toLowerCase().includes('train') || responseContent.toLowerCase().includes('voyage')) {
@@ -143,7 +137,7 @@ export default function ChatScreen() {
 
   return (
     <LinearGradient
-      colors={[Colors.background, Colors.backgroundLight, Colors.background]}
+      colors={[Colors.backgroundGradientStart, Colors.backgroundGradientEnd]}
       style={styles.gradient}
     >
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -151,7 +145,7 @@ export default function ChatScreen() {
         <Animated.View entering={FadeIn.duration(300)} style={styles.header}>
           <View style={styles.headerContent}>
             <LinearGradient
-              colors={[Colors.primaryStart, Colors.primaryEnd]}
+              colors={[Colors.primary, Colors.primaryDark]}
               style={styles.aiAvatar}
             >
               <Ionicons name="sparkles" size={20} color="#fff" />
@@ -159,7 +153,7 @@ export default function ChatScreen() {
             <View>
               <Text style={styles.headerTitle}>Velvet AI</Text>
               <Text style={styles.headerSubtitle}>
-                {isTyping ? 'En train de répondre...' : 'Toujours là pour vous aider'}
+                {isTyping ? 'En train de répondre...' : 'Votre assistant voyage intelligent'}
               </Text>
             </View>
           </View>
@@ -210,31 +204,30 @@ export default function ChatScreen() {
                 Essayez de demander :
               </Text>
               <View style={styles.suggestionsGrid}>
-                {chatSuggestions.map((suggestion, index) => (
+                {[
+                  { icon: 'train', text: 'Paris → Bordeaux demain' },
+                  { icon: 'trending-down', text: 'Prédiction de prix' },
+                  { icon: 'cash', text: 'Billets pas chers' },
+                  { icon: 'help-circle', text: 'Comment ça marche ?' },
+                ].map((suggestion, index) => (
                   <Pressable
                     key={index}
-                    onPress={() => handleSuggestionPress(suggestion)}
+                    onPress={() => handleSuggestionPress(suggestion.text)}
                     style={({ pressed }) => [
                       styles.quickSuggestionCard,
                       pressed && styles.quickSuggestionCardPressed,
                     ]}
                   >
-                    <GlassCard animated={false} style={styles.suggestionCardInner}>
-                      <Ionicons
-                        name={
-                          index === 0
-                            ? 'train'
-                            : index === 1
-                            ? 'time'
-                            : index === 2
-                            ? 'cash'
-                            : 'help-circle'
-                        }
-                        size={20}
-                        color={Colors.primaryEnd}
-                      />
-                      <Text style={styles.quickSuggestionText}>{suggestion}</Text>
-                    </GlassCard>
+                    <View style={styles.suggestionCardInner}>
+                      <View style={styles.suggestionIcon}>
+                        <Ionicons
+                          name={suggestion.icon as any}
+                          size={20}
+                          color={Colors.primary}
+                        />
+                      </View>
+                      <Text style={styles.quickSuggestionText}>{suggestion.text}</Text>
+                    </View>
                   </Pressable>
                 ))}
               </View>
@@ -243,50 +236,48 @@ export default function ChatScreen() {
 
           {/* Input Bar */}
           <View style={styles.inputContainer}>
-            <BlurView intensity={40} tint="dark" style={styles.inputBlur}>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Demandez-moi n'importe quoi..."
-                  placeholderTextColor={Colors.textMuted}
-                  value={inputText}
-                  onChangeText={setInputText}
-                  multiline
-                  maxLength={500}
-                  onSubmitEditing={handleSend}
-                  returnKeyType="send"
-                />
-                <View style={styles.inputActions}>
-                  <Pressable style={styles.micButton}>
-                    <Ionicons name="mic" size={20} color={Colors.textMuted} />
-                  </Pressable>
-                  <Pressable
-                    onPress={handleSend}
-                    disabled={!inputText.trim()}
-                    style={({ pressed }) => [
-                      styles.sendButton,
-                      !inputText.trim() && styles.sendButtonDisabled,
-                      pressed && styles.sendButtonPressed,
-                    ]}
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="Demandez-moi n'importe quoi..."
+                placeholderTextColor={Colors.textMuted}
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={500}
+                onSubmitEditing={handleSend}
+                returnKeyType="send"
+              />
+              <View style={styles.inputActions}>
+                <Pressable style={styles.micButton}>
+                  <Ionicons name="mic" size={20} color={Colors.textMuted} />
+                </Pressable>
+                <Pressable
+                  onPress={handleSend}
+                  disabled={!inputText.trim()}
+                  style={({ pressed }) => [
+                    styles.sendButton,
+                    !inputText.trim() && styles.sendButtonDisabled,
+                    pressed && styles.sendButtonPressed,
+                  ]}
+                >
+                  <LinearGradient
+                    colors={
+                      inputText.trim()
+                        ? [Colors.primary, Colors.primaryDark]
+                        : [Colors.divider, Colors.divider]
+                    }
+                    style={styles.sendButtonGradient}
                   >
-                    <LinearGradient
-                      colors={
-                        inputText.trim()
-                          ? [Colors.primaryStart, Colors.primaryEnd]
-                          : [Colors.glassBorder, Colors.glassBorder]
-                      }
-                      style={styles.sendButtonGradient}
-                    >
-                      <Ionicons
-                        name="send"
-                        size={18}
-                        color={inputText.trim() ? '#fff' : Colors.textMuted}
-                      />
-                    </LinearGradient>
-                  </Pressable>
-                </View>
+                    <Ionicons
+                      name="send"
+                      size={18}
+                      color={inputText.trim() ? '#fff' : Colors.textMuted}
+                    />
+                  </LinearGradient>
+                </Pressable>
               </View>
-            </BlurView>
+            </View>
           </View>
         </KeyboardAvoidingView>
 
@@ -310,8 +301,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
+    backgroundColor: Colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.glassBorder,
+    borderBottomColor: Colors.divider,
   },
   headerContent: {
     flexDirection: 'row',
@@ -373,7 +365,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    padding: Spacing.sm,
+    padding: Spacing.md,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: BorderRadius.lg,
+    ...Shadows.small,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+  },
+  suggestionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.aiGlow,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   quickSuggestionText: {
     ...Typography.caption,
@@ -384,19 +389,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingBottom: Spacing.sm,
   },
-  inputBlur: {
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    backgroundColor: 'rgba(30, 30, 50, 0.8)',
-  },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     minHeight: 52,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: BorderRadius.xl,
+    ...Shadows.small,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
   },
   input: {
     flex: 1,

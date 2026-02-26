@@ -1,11 +1,11 @@
 import React from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { ChatMessage, Train } from '../services/types';
 import { TrainCard } from './TrainCard';
-import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../constants/theme';
 
 interface ChatBubbleProps {
   message: ChatMessage;
@@ -26,55 +26,55 @@ export function ChatBubble({
       style={[styles.container, isUser && styles.containerUser]}
     >
       {isUser ? (
-        <LinearGradient
-          colors={[Colors.primaryStart, Colors.primaryEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.bubble, styles.userBubble]}
-        >
-          <Text style={[styles.messageText, styles.userText]}>
-            {message.content}
-          </Text>
-        </LinearGradient>
+        <View style={styles.userBubble}>
+          <Text style={styles.userText}>{message.content}</Text>
+        </View>
       ) : (
         <View style={styles.assistantContainer}>
+          {/* AI Avatar */}
+          <LinearGradient
+            colors={[Colors.primary, Colors.primaryDark]}
+            style={styles.aiAvatar}
+          >
+            <Ionicons name="sparkles" size={12} color="#FFF" />
+          </LinearGradient>
+
           <View style={styles.assistantBubble}>
-            <BlurView intensity={20} tint="dark" style={styles.blur}>
-              <View style={styles.bubbleContent}>
-                <Text style={styles.messageText}>{message.content}</Text>
+            <Text style={styles.messageText}>{message.content}</Text>
 
-                {/* Train cards */}
-                {message.cards &&
-                  message.cards.map((card, index) => (
-                    <View key={index} style={styles.cardContainer}>
-                      <TrainCard
-                        train={card.train}
-                        onPress={() => onTrainPress?.(card.train)}
-                        compact
-                        delay={index * 100}
-                      />
-                    </View>
-                  ))}
-
-                {/* Suggestions */}
-                {message.suggestions && message.suggestions.length > 0 && (
-                  <View style={styles.suggestionsContainer}>
-                    {message.suggestions.map((suggestion, index) => (
-                      <Pressable
-                        key={index}
-                        onPress={() => onSuggestionPress?.(suggestion)}
-                        style={({ pressed }) => [
-                          styles.suggestionChip,
-                          pressed && styles.suggestionChipPressed,
-                        ]}
-                      >
-                        <Text style={styles.suggestionText}>{suggestion}</Text>
-                      </Pressable>
-                    ))}
+            {/* Train cards */}
+            {message.cards && message.cards.length > 0 && (
+              <View style={styles.trainCardsContainer}>
+                {message.cards.map((card, index) => (
+                  <View key={index} style={styles.cardContainer}>
+                    <TrainCard
+                      train={card.train}
+                      onPress={() => onTrainPress?.(card.train)}
+                      compact
+                      delay={index * 100}
+                    />
                   </View>
-                )}
+                ))}
               </View>
-            </BlurView>
+            )}
+
+            {/* Suggestions */}
+            {message.suggestions && message.suggestions.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                {message.suggestions.map((suggestion, index) => (
+                  <Pressable
+                    key={index}
+                    onPress={() => onSuggestionPress?.(suggestion)}
+                    style={({ pressed }) => [
+                      styles.suggestionChip,
+                      pressed && styles.suggestionChipPressed,
+                    ]}
+                  >
+                    <Text style={styles.suggestionText}>{suggestion}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </View>
         </View>
       )}
@@ -98,14 +98,18 @@ function formatTimestamp(timestamp: string): string {
 export function TypingIndicator() {
   return (
     <Animated.View entering={FadeInDown.duration(300)} style={styles.typingContainer}>
+      <LinearGradient
+        colors={[Colors.primary, Colors.primaryDark]}
+        style={styles.typingAvatar}
+      >
+        <Ionicons name="sparkles" size={12} color="#FFF" />
+      </LinearGradient>
       <View style={styles.typingBubble}>
-        <BlurView intensity={20} tint="dark" style={styles.blur}>
-          <View style={styles.typingContent}>
-            <TypingDot delay={0} />
-            <TypingDot delay={150} />
-            <TypingDot delay={300} />
-          </View>
-        </BlurView>
+        <View style={styles.typingContent}>
+          <TypingDot delay={0} />
+          <TypingDot delay={150} />
+          <TypingDot delay={300} />
+        </View>
       </View>
     </Animated.View>
   );
@@ -144,46 +148,59 @@ const styles = StyleSheet.create({
   containerUser: {
     alignSelf: 'flex-end',
   },
-  bubble: {
+  userBubble: {
+    backgroundColor: Colors.navy,
     borderRadius: BorderRadius.lg,
+    borderBottomRightRadius: 4,
     padding: Spacing.md,
   },
-  userBubble: {
-    borderBottomRightRadius: 4,
+  userText: {
+    ...Typography.body,
+    color: '#FFFFFF',
   },
   assistantContainer: {
-    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+  },
+  aiAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
   },
   assistantBubble: {
+    flex: 1,
+    backgroundColor: Colors.cardBackground,
     borderRadius: BorderRadius.lg,
-    borderBottomLeftRadius: 4,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  blur: {
-    backgroundColor: Colors.glassBackground,
-  },
-  bubbleContent: {
+    borderTopLeftRadius: 4,
     padding: Spacing.md,
+    ...Shadows.small,
+    borderWidth: 1,
+    borderColor: Colors.primary + '20',
   },
   messageText: {
     ...Typography.body,
     color: Colors.textPrimary,
   },
-  userText: {
-    color: '#FFFFFF',
-  },
   timestamp: {
     ...Typography.small,
     color: Colors.textMuted,
     marginTop: 4,
+    marginLeft: 36, // Account for avatar
   },
   timestampUser: {
     textAlign: 'right',
+    marginLeft: 0,
+  },
+  trainCardsContainer: {
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
   },
   cardContainer: {
-    marginTop: Spacing.md,
+    marginTop: Spacing.xs,
   },
   suggestionsContainer: {
     flexDirection: 'row',
@@ -192,30 +209,42 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   suggestionChip: {
-    backgroundColor: Colors.primaryStart + '20',
+    backgroundColor: Colors.aiGlow,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    borderColor: Colors.primaryStart + '40',
+    borderColor: Colors.primary + '40',
   },
   suggestionChipPressed: {
-    backgroundColor: Colors.primaryStart + '40',
+    backgroundColor: Colors.primary + '30',
   },
   suggestionText: {
     ...Typography.caption,
-    color: Colors.primaryEnd,
+    color: Colors.primary,
+    fontWeight: '500',
   },
   typingContainer: {
-    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
     marginVertical: Spacing.xs,
   },
+  typingAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
   typingBubble: {
+    backgroundColor: Colors.cardBackground,
     borderRadius: BorderRadius.lg,
-    borderBottomLeftRadius: 4,
-    overflow: 'hidden',
+    borderTopLeftRadius: 4,
+    ...Shadows.small,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    borderColor: Colors.primary + '20',
   },
   typingContent: {
     flexDirection: 'row',
@@ -226,6 +255,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.primaryEnd,
+    backgroundColor: Colors.primary,
   },
 });

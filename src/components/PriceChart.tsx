@@ -5,7 +5,6 @@ import Animated, {
   useSharedValue,
   withDelay,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 
@@ -64,7 +63,7 @@ export function PriceChart({
               key={index}
               height={barHeight}
               width={barWidth}
-              color={isLast ? getTrendColor() : Colors.glassBorder}
+              color={isLast ? getTrendColor() : Colors.divider}
               delay={index * 50}
               isLast={isLast}
             />

@@ -1,12 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  withSpring,
-  useSharedValue,
-  withDelay,
-} from 'react-native-reanimated';
-import { Colors, Typography, BorderRadius } from '../constants/theme';
+import Animated from 'react-native-reanimated';
+import { Colors, Typography } from '../constants/theme';
 
 interface OccupancyGaugeProps {
   level: 'low' | 'medium' | 'high';
@@ -27,17 +22,6 @@ export function OccupancyGauge({
         return Colors.occupancyMedium;
       case 'high':
         return Colors.occupancyHigh;
-    }
-  };
-
-  const getLabel = () => {
-    switch (level) {
-      case 'low':
-        return 'Peu rempli';
-      case 'medium':
-        return 'Remplissage moyen';
-      case 'high':
-        return 'Très rempli';
     }
   };
 
@@ -68,7 +52,7 @@ export function OccupancyGauge({
                 height: barHeight,
                 width: barWidth,
                 backgroundColor:
-                  bar <= activeBars ? getColor() : Colors.glassBorder,
+                  bar <= activeBars ? getColor() : Colors.divider,
               },
             ]}
           />

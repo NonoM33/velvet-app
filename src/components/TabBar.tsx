@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, View, Text, Pressable, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -8,10 +7,9 @@ import Animated, {
   useSharedValue,
   withSpring,
   interpolate,
-  interpolateColor,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../constants/theme';
 
 interface TabBarProps {
   state: {
@@ -33,7 +31,7 @@ const tabs = [
 export function TabBar({ state, navigation }: TabBarProps) {
   return (
     <View style={styles.container}>
-      <BlurView intensity={80} tint="dark" style={styles.blur}>
+      <View style={styles.tabBarContainer}>
         <View style={styles.tabsContainer}>
           {tabs.map((tab, index) => (
             <TabButton
@@ -49,7 +47,7 @@ export function TabBar({ state, navigation }: TabBarProps) {
             />
           ))}
         </View>
-      </BlurView>
+      </View>
     </View>
   );
 }
@@ -71,7 +69,7 @@ function TabButton({ tab, isActive, onPress }: TabButtonProps) {
   const iconAnimatedStyle = useAnimatedStyle(() => ({
     transform: [
       {
-        scale: interpolate(activeValue.value, [0, 1], [1, 1.15]),
+        scale: interpolate(activeValue.value, [0, 1], [1, 1.1]),
       },
       {
         translateY: interpolate(activeValue.value, [0, 1], [0, -2]),
@@ -101,19 +99,19 @@ function TabButton({ tab, isActive, onPress }: TabButtonProps) {
       <Animated.View style={[styles.tabContent, containerStyle]}>
         {isActive ? (
           <LinearGradient
-            colors={[Colors.primaryStart, Colors.primaryEnd]}
+            colors={[Colors.primary, Colors.primaryDark]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.activeBackground}
           >
             <Animated.View style={iconAnimatedStyle}>
-              <Ionicons name={tab.icon} size={22} color="#FFFFFF" />
+              <Ionicons name={tab.icon} size={20} color="#FFFFFF" />
             </Animated.View>
             <Text style={styles.activeLabel}>{tab.label}</Text>
           </LinearGradient>
         ) : (
           <View style={styles.inactiveContent}>
-            <Ionicons name={`${tab.icon}-outline` as any} size={22} color={Colors.textMuted} />
+            <Ionicons name={`${tab.icon}-outline` as any} size={20} color={Colors.textMuted} />
           </View>
         )}
       </Animated.View>
@@ -130,12 +128,12 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     paddingHorizontal: Spacing.md,
   },
-  blur: {
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
+  tabBarContainer: {
+    borderRadius: BorderRadius.xxl,
+    backgroundColor: Colors.cardBackground,
+    ...Shadows.large,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    backgroundColor: 'rgba(13, 13, 26, 0.9)',
+    borderColor: Colors.cardBorder,
   },
   tabsContainer: {
     flexDirection: 'row',

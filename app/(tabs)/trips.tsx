@@ -16,7 +16,7 @@ import { router } from 'expo-router';
 import { GlassCard } from '../../src/components';
 import { useStore } from '../../src/store/store';
 import { formatTime, formatDate, getCountdown } from '../../src/services/navitia';
-import { Colors, Spacing, Typography, BorderRadius } from '../../src/constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../src/constants/theme';
 import { Trip } from '../../src/services/types';
 
 type TabType = 'upcoming' | 'past';
@@ -34,9 +34,12 @@ export default function TripsScreen() {
 
   const trips = activeTab === 'upcoming' ? upcomingTrips : pastTrips;
 
+  // Calculate AI savings for past trips
+  const totalAISavings = pastTrips.reduce((acc, trip) => acc + (trip.aiSavings || 0), 0);
+
   return (
     <LinearGradient
-      colors={[Colors.background, Colors.backgroundLight, Colors.background]}
+      colors={[Colors.backgroundGradientStart, Colors.backgroundGradientEnd]}
       style={styles.gradient}
     >
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -48,6 +51,23 @@ export default function TripsScreen() {
           </Text>
         </Animated.View>
 
+        {/* AI Savings Banner */}
+        {totalAISavings > 0 && (
+          <Animated.View entering={FadeInDown.delay(50).duration(400)} style={styles.savingsBanner}>
+            <LinearGradient
+              colors={[Colors.primary, Colors.primaryDark]}
+              style={styles.savingsGradient}
+            >
+              <View style={styles.savingsContent}>
+                <Ionicons name="sparkles" size={20} color="#FFF" />
+                <Text style={styles.savingsText}>
+                  Économies grâce à l'IA: <Text style={styles.savingsAmount}>{totalAISavings}€</Text>
+                </Text>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+        )}
+
         {/* Tab Switcher */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)}>
           <View style={styles.tabContainer}>
@@ -57,7 +77,7 @@ export default function TripsScreen() {
             >
               {activeTab === 'upcoming' ? (
                 <LinearGradient
-                  colors={[Colors.primaryStart, Colors.primaryEnd]}
+                  colors={[Colors.primary, Colors.primaryDark]}
                   style={styles.tabGradient}
                 >
                   <Ionicons name="time" size={16} color="#fff" />
@@ -76,7 +96,7 @@ export default function TripsScreen() {
             >
               {activeTab === 'past' ? (
                 <LinearGradient
-                  colors={[Colors.primaryStart, Colors.primaryEnd]}
+                  colors={[Colors.primary, Colors.primaryDark]}
                   style={styles.tabGradient}
                 >
                   <Ionicons name="checkmark-circle" size={16} color="#fff" />
@@ -107,13 +127,15 @@ export default function TripsScreen() {
               entering={FadeInDown.delay(200).duration(400)}
               style={styles.emptyState}
             >
-              <GlassCard>
+              <GlassCard variant="default">
                 <View style={styles.emptyContent}>
-                  <Ionicons
-                    name={activeTab === 'upcoming' ? 'train-outline' : 'time-outline'}
-                    size={48}
-                    color={Colors.textMuted}
-                  />
+                  <View style={styles.emptyIcon}>
+                    <Ionicons
+                      name={activeTab === 'upcoming' ? 'train-outline' : 'time-outline'}
+                      size={40}
+                      color={Colors.primary}
+                    />
+                  </View>
                   <Text style={styles.emptyTitle}>
                     {activeTab === 'upcoming'
                       ? 'Aucun voyage prévu'
@@ -130,12 +152,12 @@ export default function TripsScreen() {
                       style={styles.emptyButton}
                     >
                       <LinearGradient
-                        colors={[Colors.primaryStart, Colors.primaryEnd]}
+                        colors={[Colors.primary, Colors.primaryDark]}
                         style={styles.emptyButtonGradient}
                       >
-                        <Ionicons name="search" size={16} color="#fff" />
+                        <Ionicons name="sparkles" size={16} color="#fff" />
                         <Text style={styles.emptyButtonText}>
-                          Rechercher un train
+                          Demander à l'IA
                         </Text>
                       </LinearGradient>
                     </Pressable>
@@ -153,6 +175,7 @@ export default function TripsScreen() {
                     trip={trip}
                     index={index}
                     isLast={index === trips.length - 1}
+                    isPast={activeTab === 'past'}
                   />
                 ))}
               </View>
@@ -170,19 +193,20 @@ interface TripCardProps {
   trip: Trip;
   index: number;
   isLast: boolean;
+  isPast: boolean;
 }
 
-function TripCard({ trip, index, isLast }: TripCardProps) {
+function TripCard({ trip, index, isLast, isPast }: TripCardProps) {
   const countdown = getCountdown(trip.train.departure.time);
 
   const getStatusColor = () => {
     switch (trip.status) {
       case 'upcoming':
-        return Colors.success;
+        return Colors.primary;
       case 'ongoing':
         return Colors.warning;
       case 'completed':
-        return Colors.textMuted;
+        return Colors.success;
       case 'cancelled':
         return Colors.error;
     }
@@ -222,14 +246,13 @@ function TripCard({ trip, index, isLast }: TripCardProps) {
           router.push(`/journey/${trip.id}`);
         }}
       >
-        <GlassCard animated={false}>
+        <View style={styles.tripCardInner}>
           <View style={styles.tripContent}>
             {/* Header */}
             <View style={styles.tripHeader}>
               <View style={styles.routeContainer}>
                 <Text style={styles.route}>
-                  {trip.train.departure.station.city} →{' '}
-                  {trip.train.arrival.station.city}
+                  {trip.train.departure.station.city} → {trip.train.arrival.station.city}
                 </Text>
                 <Text style={styles.tripDate}>
                   {formatDate(trip.train.departure.time)}
@@ -253,7 +276,11 @@ function TripCard({ trip, index, isLast }: TripCardProps) {
                 </Text>
               </View>
               <View style={styles.durationContainer}>
-                <Ionicons name="arrow-forward" size={16} color={Colors.textMuted} />
+                <View style={styles.timeLine}>
+                  <View style={styles.timeDot} />
+                  <View style={styles.timeLineBar} />
+                  <Ionicons name="train" size={14} color={Colors.primary} />
+                </View>
               </View>
               <View style={[styles.timeBlock, styles.timeBlockRight]}>
                 <Text style={styles.timeLabel}>Arrivée</Text>
@@ -263,15 +290,25 @@ function TripCard({ trip, index, isLast }: TripCardProps) {
               </View>
             </View>
 
+            {/* AI Insight for past trips */}
+            {isPast && trip.aiSavings && trip.aiSavings > 0 && (
+              <View style={styles.aiInsight}>
+                <Ionicons name="sparkles" size={14} color={Colors.primary} />
+                <Text style={styles.aiInsightText}>
+                  Vous avez économisé <Text style={styles.aiSavingsText}>{trip.aiSavings}€</Text> grâce à l'IA
+                </Text>
+              </View>
+            )}
+
             {/* Details */}
             <View style={styles.tripDetails}>
               <View style={styles.detailItem}>
-                <Ionicons name="train" size={14} color={Colors.primaryEnd} />
+                <Ionicons name="train" size={14} color={Colors.primary} />
                 <Text style={styles.detailText}>{trip.train.trainNumber}</Text>
               </View>
               {trip.coach && trip.seat && (
                 <View style={styles.detailItem}>
-                  <Ionicons name="location" size={14} color={Colors.primaryEnd} />
+                  <Ionicons name="location" size={14} color={Colors.primary} />
                   <Text style={styles.detailText}>
                     Voiture {trip.coach} • Place {trip.seat}
                   </Text>
@@ -279,11 +316,8 @@ function TripCard({ trip, index, isLast }: TripCardProps) {
               )}
               {trip.status === 'upcoming' && countdown && (
                 <View style={styles.countdownContainer}>
-                  <LinearGradient
-                    colors={[Colors.primaryStart + '30', Colors.primaryEnd + '30']}
-                    style={styles.countdownBadge}
-                  >
-                    <Ionicons name="time" size={12} color={Colors.primaryEnd} />
+                  <View style={styles.countdownBadge}>
+                    <Ionicons name="time" size={12} color={Colors.primary} />
                     <Text style={styles.countdownText}>
                       {countdown.isToday
                         ? `Dans ${countdown.hours}h ${countdown.minutes}min`
@@ -291,7 +325,7 @@ function TripCard({ trip, index, isLast }: TripCardProps) {
                         ? 'Demain'
                         : `Dans ${countdown.days} jour${countdown.days > 1 ? 's' : ''}`}
                     </Text>
-                  </LinearGradient>
+                  </View>
                 </View>
               )}
             </View>
@@ -302,7 +336,7 @@ function TripCard({ trip, index, isLast }: TripCardProps) {
                 <View style={styles.ticketDivider} />
                 <View style={styles.ticketContent}>
                   <View style={styles.qrPlaceholder}>
-                    <Ionicons name="qr-code" size={24} color={Colors.textMuted} />
+                    <Ionicons name="qr-code" size={24} color={Colors.primary} />
                   </View>
                   <View style={styles.ticketInfo}>
                     <Text style={styles.ticketLabel}>Code billet</Text>
@@ -313,7 +347,7 @@ function TripCard({ trip, index, isLast }: TripCardProps) {
               </View>
             )}
           </View>
-        </GlassCard>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -340,6 +374,26 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 4,
   },
+  savingsBanner: {
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  savingsGradient: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+  },
+  savingsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  savingsText: {
+    ...Typography.body,
+    color: '#FFF',
+  },
+  savingsAmount: {
+    fontWeight: '700',
+  },
   tabContainer: {
     flexDirection: 'row',
     paddingHorizontal: Spacing.md,
@@ -365,9 +419,9 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.glassBackground,
+    backgroundColor: Colors.cardBackground,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    borderColor: Colors.cardBorder,
   },
   tabTextActive: {
     ...Typography.bodyBold,
@@ -390,10 +444,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.xl,
   },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.aiGlow,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
   emptyTitle: {
     ...Typography.h3,
     color: Colors.textPrimary,
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
   },
   emptySubtitle: {
     ...Typography.body,
@@ -438,11 +501,19 @@ const styles = StyleSheet.create({
   timelineLine: {
     flex: 1,
     width: 2,
-    backgroundColor: Colors.glassBorder,
+    backgroundColor: Colors.divider,
     marginTop: 4,
   },
   tripCard: {
     flex: 1,
+  },
+  tripCardInner: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: BorderRadius.lg,
+    ...Shadows.small,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    padding: Spacing.md,
   },
   tripContent: {
     gap: Spacing.sm,
@@ -493,7 +564,39 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   durationContainer: {
+    flex: 1,
     paddingHorizontal: Spacing.md,
+  },
+  timeLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+  },
+  timeLineBar: {
+    flex: 1,
+    height: 2,
+    backgroundColor: Colors.divider,
+  },
+  aiInsight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    backgroundColor: Colors.aiGlow,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  aiInsightText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  aiSavingsText: {
+    color: Colors.success,
+    fontWeight: '700',
   },
   tripDetails: {
     flexDirection: 'row',
@@ -505,7 +608,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Colors.backgroundLight,
+    backgroundColor: Colors.backgroundTertiary,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     borderRadius: BorderRadius.sm,
@@ -521,13 +624,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: Colors.aiGlow,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     borderRadius: BorderRadius.sm,
   },
   countdownText: {
     ...Typography.small,
-    color: Colors.primaryEnd,
+    color: Colors.primary,
     fontWeight: '600',
   },
   ticketContainer: {
@@ -535,7 +639,7 @@ const styles = StyleSheet.create({
   },
   ticketDivider: {
     height: 1,
-    backgroundColor: Colors.glassBorder,
+    backgroundColor: Colors.divider,
     marginBottom: Spacing.sm,
   },
   ticketContent: {
@@ -546,7 +650,7 @@ const styles = StyleSheet.create({
   qrPlaceholder: {
     width: 40,
     height: 40,
-    backgroundColor: Colors.backgroundLight,
+    backgroundColor: Colors.backgroundTertiary,
     borderRadius: BorderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',

@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { GlassCard, AnimatedCounter } from '../../src/components';
 import { useStore } from '../../src/store/store';
-import { Colors, Spacing, Typography, BorderRadius } from '../../src/constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../src/constants/theme';
 
 export default function ProfileScreen() {
   const { user, setUser } = useStore();
@@ -52,22 +52,9 @@ export default function ProfileScreen() {
     });
   };
 
-  const getTierColor = () => {
-    switch (user.tier) {
-      case 'Platinum':
-        return ['#E5E4E2', '#A9A9A9'];
-      case 'Gold':
-        return ['#FFD700', '#FFA500'];
-      case 'Silver':
-        return ['#C0C0C0', '#A8A8A8'];
-      default:
-        return ['#CD7F32', '#8B4513'];
-    }
-  };
-
   return (
     <LinearGradient
-      colors={[Colors.background, Colors.backgroundLight, Colors.background]}
+      colors={[Colors.backgroundGradientStart, Colors.backgroundGradientEnd]}
       style={styles.gradient}
     >
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -78,52 +65,69 @@ export default function ProfileScreen() {
         >
           {/* Header / Profile Card */}
           <Animated.View entering={FadeIn.duration(500)}>
-            <GlassCard animated={false}>
+            <GlassCard variant="elevated" animated={false}>
               <View style={styles.profileHeader}>
                 <View style={styles.avatarContainer}>
                   <LinearGradient
-                    colors={[Colors.primaryStart, Colors.primaryEnd]}
+                    colors={[Colors.primary, Colors.primaryDark]}
                     style={styles.avatar}
                   >
                     <Text style={styles.avatarText}>
                       {user.name.charAt(0).toUpperCase()}
                     </Text>
                   </LinearGradient>
-                  <LinearGradient
-                    colors={getTierColor() as [string, string]}
-                    style={styles.tierBadge}
-                  >
-                    <Ionicons name="star" size={10} color="#000" />
-                  </LinearGradient>
                 </View>
                 <View style={styles.profileInfo}>
                   <Text style={styles.name}>{user.name}</Text>
                   <Text style={styles.email}>{user.email}</Text>
-                  <View style={styles.tierContainer}>
-                    <LinearGradient
-                      colors={getTierColor() as [string, string]}
-                      style={styles.tierLabel}
-                    >
-                      <Text style={styles.tierText}>Membre {user.tier}</Text>
-                    </LinearGradient>
+                  <View style={styles.memberBadge}>
+                    <Ionicons name="sparkles" size={12} color={Colors.primary} />
+                    <Text style={styles.memberText}>Membre Velvet</Text>
                   </View>
                 </View>
               </View>
             </GlassCard>
           </Animated.View>
 
-          {/* Stats Dashboard */}
+          {/* AI Savings - HERO STAT */}
           <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-            <Text style={styles.sectionTitle}>📊 Vos statistiques</Text>
-            <View style={styles.statsGrid}>
-              <GlassCard style={styles.statCard} delay={0}>
-                <View style={styles.statContent}>
+            <Text style={styles.sectionTitle}>Économies grâce à l'IA</Text>
+            <GlassCard variant="ai" animated={false}>
+              <View style={styles.aiSavingsCard}>
+                <View style={styles.aiSavingsHeader}>
                   <LinearGradient
-                    colors={[Colors.primaryStart + '30', Colors.primaryEnd + '30']}
-                    style={styles.statIcon}
+                    colors={[Colors.primary, Colors.primaryDark]}
+                    style={styles.aiSavingsIcon}
                   >
-                    <Ionicons name="train" size={20} color={Colors.primaryEnd} />
+                    <Ionicons name="sparkles" size={28} color="#FFF" />
                   </LinearGradient>
+                  <View style={styles.aiSavingsAmount}>
+                    <AnimatedCounter
+                      value={user.stats.moneySaved}
+                      suffix="€"
+                      style={styles.savingsValue}
+                    />
+                    <Text style={styles.savingsLabel}>Économisés au total</Text>
+                  </View>
+                </View>
+                <View style={styles.savingsComparison}>
+                  <Text style={styles.comparisonText}>
+                    C'est l'équivalent de <Text style={styles.comparisonHighlight}>3 billets Paris-Bordeaux</Text> gratuits !
+                  </Text>
+                </View>
+              </View>
+            </GlassCard>
+          </Animated.View>
+
+          {/* Stats Dashboard */}
+          <Animated.View entering={FadeInDown.delay(150).duration(400)}>
+            <Text style={styles.sectionTitle}>Vos statistiques</Text>
+            <View style={styles.statsGrid}>
+              <GlassCard style={styles.statCard} variant="flat" delay={0}>
+                <View style={styles.statContent}>
+                  <View style={[styles.statIcon, { backgroundColor: Colors.aiGlow }]}>
+                    <Ionicons name="train" size={20} color={Colors.primary} />
+                  </View>
                   <AnimatedCounter
                     value={user.stats.totalTrips}
                     style={styles.statValue}
@@ -132,48 +136,11 @@ export default function ProfileScreen() {
                 </View>
               </GlassCard>
 
-              <GlassCard style={styles.statCard} delay={100}>
+              <GlassCard style={styles.statCard} variant="flat" delay={100}>
                 <View style={styles.statContent}>
-                  <LinearGradient
-                    colors={[Colors.success + '30', Colors.success + '30']}
-                    style={styles.statIcon}
-                  >
-                    <Ionicons name="cash" size={20} color={Colors.success} />
-                  </LinearGradient>
-                  <AnimatedCounter
-                    value={user.stats.moneySaved}
-                    suffix="€"
-                    style={styles.statValue}
-                  />
-                  <Text style={styles.statLabel}>Économisés</Text>
-                </View>
-              </GlassCard>
-
-              <GlassCard style={styles.statCard} delay={200}>
-                <View style={styles.statContent}>
-                  <LinearGradient
-                    colors={[Colors.info + '30', Colors.info + '30']}
-                    style={styles.statIcon}
-                  >
-                    <Ionicons name="navigate" size={20} color={Colors.info} />
-                  </LinearGradient>
-                  <AnimatedCounter
-                    value={Math.round(user.stats.totalDistance / 1000)}
-                    suffix="k"
-                    style={styles.statValue}
-                  />
-                  <Text style={styles.statLabel}>Km parcourus</Text>
-                </View>
-              </GlassCard>
-
-              <GlassCard style={styles.statCard} delay={300}>
-                <View style={styles.statContent}>
-                  <LinearGradient
-                    colors={[Colors.gold + '30', Colors.gold + '30']}
-                    style={styles.statIcon}
-                  >
-                    <Ionicons name="leaf" size={20} color={Colors.gold} />
-                  </LinearGradient>
+                  <View style={[styles.statIcon, { backgroundColor: Colors.successLight }]}>
+                    <Ionicons name="leaf" size={20} color={Colors.success} />
+                  </View>
                   <AnimatedCounter
                     value={user.stats.co2Avoided}
                     suffix="kg"
@@ -182,36 +149,54 @@ export default function ProfileScreen() {
                   <Text style={styles.statLabel}>CO₂ évité</Text>
                 </View>
               </GlassCard>
-            </View>
 
-            {/* Favorite Route */}
-            {user.stats.favoriteRoute && (
-              <GlassCard delay={400}>
-                <View style={styles.favoriteRoute}>
-                  <View style={styles.favoriteIcon}>
-                    <Ionicons name="heart" size={20} color={Colors.error} />
+              <GlassCard style={styles.statCard} variant="flat" delay={200}>
+                <View style={styles.statContent}>
+                  <View style={[styles.statIcon, { backgroundColor: Colors.infoLight }]}>
+                    <Ionicons name="navigate" size={20} color={Colors.info} />
                   </View>
-                  <View style={styles.favoriteInfo}>
-                    <Text style={styles.favoriteLabel}>Trajet favori</Text>
-                    <Text style={styles.favoriteText}>
-                      {user.stats.favoriteRoute.origin} →{' '}
-                      {user.stats.favoriteRoute.destination}
-                    </Text>
-                  </View>
-                  <View style={styles.favoriteCount}>
-                    <Text style={styles.favoriteCountText}>
-                      {user.stats.favoriteRoute.count}x
-                    </Text>
-                  </View>
+                  <AnimatedCounter
+                    value={Math.round(user.stats.totalDistance / 1000)}
+                    suffix="k km"
+                    style={styles.statValue}
+                  />
+                  <Text style={styles.statLabel}>Parcourus</Text>
                 </View>
               </GlassCard>
-            )}
+            </View>
+          </Animated.View>
+
+          {/* AI Learned Preferences */}
+          <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+            <Text style={styles.sectionTitle}>L'IA a appris que vous préférez</Text>
+            <GlassCard variant="default" animated={false}>
+              <View style={styles.learnedPrefs}>
+                <View style={styles.learnedPref}>
+                  <View style={styles.learnedPrefIcon}>
+                    <Ionicons name="sunny-outline" size={18} color={Colors.primary} />
+                  </View>
+                  <Text style={styles.learnedPrefText}>Place côté fenêtre</Text>
+                </View>
+                <View style={styles.learnedPref}>
+                  <View style={styles.learnedPrefIcon}>
+                    <Ionicons name="volume-mute-outline" size={18} color={Colors.primary} />
+                  </View>
+                  <Text style={styles.learnedPrefText}>Voiture silencieuse</Text>
+                </View>
+                <View style={styles.learnedPref}>
+                  <View style={styles.learnedPrefIcon}>
+                    <Ionicons name="time-outline" size={18} color={Colors.primary} />
+                  </View>
+                  <Text style={styles.learnedPrefText}>Départ avant 9h</Text>
+                </View>
+              </View>
+            </GlassCard>
           </Animated.View>
 
           {/* Preferences */}
           <Animated.View entering={FadeInDown.delay(300).duration(400)}>
-            <Text style={styles.sectionTitle}>⚙️ Préférences de voyage</Text>
-            <GlassCard animated={false}>
+            <Text style={styles.sectionTitle}>Préférences de voyage</Text>
+            <GlassCard variant="default" animated={false}>
               <View style={styles.preferencesList}>
                 {/* Seat Preference */}
                 <View style={styles.preferenceItem}>
@@ -270,11 +255,11 @@ export default function ProfileScreen() {
                       handlePreferenceChange('quietCoach', value)
                     }
                     trackColor={{
-                      false: Colors.glassBorder,
-                      true: Colors.primaryEnd + '80',
+                      false: Colors.divider,
+                      true: Colors.primary + '80',
                     }}
                     thumbColor={
-                      user.preferences.quietCoach ? Colors.primaryEnd : Colors.textMuted
+                      user.preferences.quietCoach ? Colors.primary : Colors.textMuted
                     }
                   />
                 </View>
@@ -321,8 +306,8 @@ export default function ProfileScreen() {
 
           {/* Notifications */}
           <Animated.View entering={FadeInDown.delay(400).duration(400)}>
-            <Text style={styles.sectionTitle}>🔔 Notifications</Text>
-            <GlassCard animated={false}>
+            <Text style={styles.sectionTitle}>Notifications</Text>
+            <GlassCard variant="default" animated={false}>
               <View style={styles.preferencesList}>
                 <View style={styles.preferenceItem}>
                   <View style={styles.preferenceInfo}>
@@ -332,9 +317,9 @@ export default function ProfileScreen() {
                       color={Colors.textSecondary}
                     />
                     <View>
-                      <Text style={styles.preferenceLabel}>Alertes prix</Text>
+                      <Text style={styles.preferenceLabel}>Alertes prix IA</Text>
                       <Text style={styles.preferenceDescription}>
-                        Recevez une alerte quand le prix baisse
+                        L'IA vous alerte quand le prix baisse
                       </Text>
                     </View>
                   </View>
@@ -342,12 +327,12 @@ export default function ProfileScreen() {
                     value={user.preferences.notifications.priceAlerts}
                     onValueChange={() => handleToggle('priceAlerts')}
                     trackColor={{
-                      false: Colors.glassBorder,
-                      true: Colors.primaryEnd + '80',
+                      false: Colors.divider,
+                      true: Colors.primary + '80',
                     }}
                     thumbColor={
                       user.preferences.notifications.priceAlerts
-                        ? Colors.primaryEnd
+                        ? Colors.primary
                         : Colors.textMuted
                     }
                   />
@@ -373,12 +358,12 @@ export default function ProfileScreen() {
                     value={user.preferences.notifications.disruptions}
                     onValueChange={() => handleToggle('disruptions')}
                     trackColor={{
-                      false: Colors.glassBorder,
-                      true: Colors.primaryEnd + '80',
+                      false: Colors.divider,
+                      true: Colors.primary + '80',
                     }}
                     thumbColor={
                       user.preferences.notifications.disruptions
-                        ? Colors.primaryEnd
+                        ? Colors.primary
                         : Colors.textMuted
                     }
                   />
@@ -404,12 +389,12 @@ export default function ProfileScreen() {
                     value={user.preferences.notifications.tripReminders}
                     onValueChange={() => handleToggle('tripReminders')}
                     trackColor={{
-                      false: Colors.glassBorder,
-                      true: Colors.primaryEnd + '80',
+                      false: Colors.divider,
+                      true: Colors.primary + '80',
                     }}
                     thumbColor={
                       user.preferences.notifications.tripReminders
-                        ? Colors.primaryEnd
+                        ? Colors.primary
                         : Colors.textMuted
                     }
                   />
@@ -420,10 +405,10 @@ export default function ProfileScreen() {
 
           {/* App Info */}
           <Animated.View entering={FadeInDown.delay(500).duration(400)}>
-            <GlassCard style={styles.appInfo}>
+            <GlassCard style={styles.appInfo} variant="flat">
               <View style={styles.appInfoContent}>
                 <LinearGradient
-                  colors={[Colors.primaryStart, Colors.primaryEnd]}
+                  colors={[Colors.primary, Colors.primaryDark]}
                   style={styles.appLogo}
                 >
                   <Ionicons name="train" size={24} color="#fff" />
@@ -431,7 +416,7 @@ export default function ProfileScreen() {
                 <Text style={styles.appName}>Velvet Companion</Text>
                 <Text style={styles.appVersion}>Version 1.0.0 (Prototype)</Text>
                 <Text style={styles.appTagline}>
-                  L'IA qui révolutionne vos voyages en train 🚄
+                  L'IA qui révolutionne vos voyages en train
                 </Text>
               </View>
             </GlassCard>
@@ -477,18 +462,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  tierBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.background,
-  },
   profileInfo: {
     flex: 1,
   },
@@ -501,18 +474,20 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
-  tierContainer: {
-    marginTop: Spacing.sm,
-  },
-  tierLabel: {
+  memberBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.aiGlow,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     borderRadius: BorderRadius.full,
     alignSelf: 'flex-start',
+    marginTop: Spacing.sm,
   },
-  tierText: {
+  memberText: {
     ...Typography.small,
-    color: '#000',
+    color: Colors.primary,
     fontWeight: '600',
   },
   sectionTitle: {
@@ -521,15 +496,58 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
     marginBottom: Spacing.sm,
   },
+
+  // AI Savings Card
+  aiSavingsCard: {
+    gap: Spacing.md,
+  },
+  aiSavingsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  aiSavingsIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiSavingsAmount: {
+    flex: 1,
+  },
+  savingsValue: {
+    ...Typography.h1,
+    color: Colors.success,
+    fontWeight: '700',
+    fontSize: 40,
+  },
+  savingsLabel: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  savingsComparison: {
+    backgroundColor: Colors.successLight,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  comparisonText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  comparisonHighlight: {
+    color: Colors.success,
+    fontWeight: '600',
+  },
+
+  // Stats Grid
   statsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.sm,
-    marginBottom: Spacing.sm,
   },
   statCard: {
-    width: '48%',
-    flexGrow: 1,
+    flex: 1,
   },
   statContent: {
     alignItems: 'center',
@@ -543,47 +561,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statValue: {
-    ...Typography.h2,
+    ...Typography.h3,
     color: Colors.textPrimary,
+    fontWeight: '700',
   },
   statLabel: {
     ...Typography.small,
     color: Colors.textMuted,
   },
-  favoriteRoute: {
+
+  // Learned Preferences
+  learnedPrefs: {
+    gap: Spacing.sm,
+  },
+  learnedPref: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
-  favoriteIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.error + '20',
+  learnedPrefIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.aiGlow,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  favoriteInfo: {
-    flex: 1,
+  learnedPrefText: {
+    ...Typography.body,
+    color: Colors.textSecondary,
   },
-  favoriteLabel: {
-    ...Typography.small,
-    color: Colors.textMuted,
-  },
-  favoriteText: {
-    ...Typography.bodyBold,
-    color: Colors.textPrimary,
-  },
-  favoriteCount: {
-    backgroundColor: Colors.backgroundLight,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
-  },
-  favoriteCountText: {
-    ...Typography.bodyBold,
-    color: Colors.primaryEnd,
-  },
+
+  // Preferences
   preferencesList: {
     gap: Spacing.sm,
   },
@@ -610,11 +619,11 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.glassBorder,
+    backgroundColor: Colors.divider,
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: Colors.backgroundLight,
+    backgroundColor: Colors.backgroundTertiary,
     borderRadius: BorderRadius.sm,
     padding: 2,
   },
@@ -624,7 +633,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm - 2,
   },
   segmentButtonActive: {
-    backgroundColor: Colors.primaryEnd,
+    backgroundColor: Colors.primary,
   },
   segmentText: {
     ...Typography.small,

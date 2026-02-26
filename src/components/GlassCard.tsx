@@ -1,23 +1,20 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle, Pressable } from 'react-native';
-import { BlurView } from 'expo-blur';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
-  FadeIn,
   FadeInDown,
 } from 'react-native-reanimated';
-import { Colors, BorderRadius, Spacing } from '../constants/theme';
+import { Colors, BorderRadius, Spacing, Shadows } from '../constants/theme';
 
 interface GlassCardProps {
   children: React.ReactNode;
   style?: ViewStyle;
-  intensity?: number;
   onPress?: () => void;
   animated?: boolean;
   delay?: number;
+  variant?: 'default' | 'elevated' | 'ai' | 'flat';
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -25,10 +22,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 export function GlassCard({
   children,
   style,
-  intensity = 20,
   onPress,
   animated = true,
   delay = 0,
+  variant = 'default',
 }: GlassCardProps) {
   const scale = useSharedValue(1);
 
@@ -46,11 +43,39 @@ export function GlassCard({
     scale.value = withSpring(1, { damping: 15 });
   };
 
+  const getVariantStyles = (): ViewStyle => {
+    switch (variant) {
+      case 'elevated':
+        return {
+          ...Shadows.medium,
+          backgroundColor: Colors.cardBackground,
+          borderWidth: 0,
+        };
+      case 'ai':
+        return {
+          ...Shadows.glow,
+          backgroundColor: Colors.cardBackground,
+          borderWidth: 1,
+          borderColor: Colors.primary + '30',
+        };
+      case 'flat':
+        return {
+          backgroundColor: Colors.backgroundSecondary,
+          borderWidth: 0,
+        };
+      default:
+        return {
+          ...Shadows.small,
+          backgroundColor: Colors.cardBackground,
+          borderWidth: 1,
+          borderColor: Colors.cardBorder,
+        };
+    }
+  };
+
   const content = (
-    <View style={[styles.innerContainer, style]}>
-      <BlurView intensity={intensity} tint="dark" style={styles.blur}>
-        <View style={styles.content}>{children}</View>
-      </BlurView>
+    <View style={[styles.innerContainer, getVariantStyles(), style]}>
+      <View style={styles.content}>{children}</View>
     </View>
   );
 
@@ -86,11 +111,6 @@ const styles = StyleSheet.create({
   innerContainer: {
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  blur: {
-    backgroundColor: Colors.glassBackground,
   },
   content: {
     padding: Spacing.md,
