@@ -24,9 +24,10 @@ export default function RootLayout() {
 
     const inOnboarding = segments[0] === 'onboarding';
 
-    if (!hasSeenOnboarding && !inOnboarding) {
-      router.replace('/onboarding');
-    }
+    // Onboarding disabled for demo - go straight to app
+    // if (!hasSeenOnboarding && !inOnboarding) {
+    //   router.replace('/onboarding');
+    // }
   }, [hasSeenOnboarding, isLoading, segments]);
 
   const checkOnboardingStatus = async () => {
