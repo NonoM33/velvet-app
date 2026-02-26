@@ -33,6 +33,8 @@ export interface Train {
     confidence: number;
     predictedPrice?: number;
   };
+  aiScore?: number; // 0-100 AI recommendation score
+  aiRecommendation?: string; // AI-generated recommendation text
 }
 
 export interface Trip {

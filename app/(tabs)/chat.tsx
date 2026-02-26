@@ -11,17 +11,25 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInUp, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
-import { ChatBubble, TypingIndicator, GlassCard } from '../../src/components';
+import { GlassCard, showToast } from '../../src/components';
 import { useStore } from '../../src/store/store';
-import { sendChatMessage, detectTrainQuery } from '../../src/services/huggingface';
-import { searchTrainsByCity } from '../../src/services/navitia';
-import { ChatMessage, Train } from '../../src/services/types';
+import { sendChatMessage } from '../../src/services/huggingface';
+import { ChatMessage } from '../../src/services/types';
 import { chatSuggestions } from '../../src/services/mockData';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../src/constants/theme';
+
+// Complex query suggestions - chat is for advanced questions
+const complexSuggestions = [
+  { icon: 'analytics', text: 'Compare les prix sur 2 semaines', category: 'Analyse' },
+  { icon: 'calendar', text: 'Planifie mon week-end à Bordeaux', category: 'Planification' },
+  { icon: 'bulb', text: 'Meilleur jour pour voyager pas cher', category: 'Conseil' },
+  { icon: 'swap-horizontal', text: 'Trajets avec correspondances', category: 'Recherche' },
+  { icon: 'time', text: 'Historique des prix Paris-Lyon', category: 'Analyse' },
+  { icon: 'people', text: 'Voyage en groupe (4+ personnes)', category: 'Groupe' },
+];
 
 export default function ChatScreen() {
   const { chatMessages, addChatMessage, isTyping, setIsTyping } = useStore();
@@ -54,42 +62,24 @@ export default function ChatScreen() {
     setIsTyping(true);
 
     try {
-      const queryInfo = detectTrainQuery(messageText);
+      const conversationHistory = chatMessages
+        .filter((m) => m.id !== 'welcome')
+        .slice(-6)
+        .map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        }));
 
-      let responseContent: string;
-      let trainCards: { type: 'train'; train: Train }[] | undefined;
+      const responseContent = await sendChatMessage(messageText, conversationHistory);
+
+      // Generate contextual suggestions
       let suggestions: string[] | undefined;
-
-      if (queryInfo.isTrainQuery && queryInfo.origin && queryInfo.destination) {
-        const trains = await searchTrainsByCity(queryInfo.origin, queryInfo.destination);
-
-        if (trains.length > 0) {
-          responseContent = `Voilà ce que j'ai trouvé pour ${queryInfo.origin} → ${queryInfo.destination} ! 🚄\n\nJ'ai analysé ${trains.length} trains et voici les meilleures options selon l'IA :`;
-          trainCards = trains.slice(0, 3).map((train) => ({
-            type: 'train' as const,
-            train,
-          }));
-          suggestions = ['Meilleur prix cette semaine', 'Train le plus rapide', 'Prédiction de prix'];
-        } else {
-          responseContent = `Je n'ai pas trouvé de trains directs pour ${queryInfo.origin} → ${queryInfo.destination}. Essaie avec une autre destination ! 🤔`;
-          suggestions = ['Paris → Bordeaux', 'Paris → Nantes', 'Paris → Rennes'];
-        }
-      } else {
-        const conversationHistory = chatMessages
-          .filter((m) => m.id !== 'welcome')
-          .slice(-6)
-          .map((m) => ({
-            role: m.role as 'user' | 'assistant',
-            content: m.content,
-          }));
-
-        responseContent = await sendChatMessage(messageText, conversationHistory);
-
-        if (responseContent.toLowerCase().includes('prix') || responseContent.toLowerCase().includes('billet')) {
-          suggestions = ['Voir les prix', 'Créer une alerte', 'Meilleur moment pour acheter'];
-        } else if (responseContent.toLowerCase().includes('train') || responseContent.toLowerCase().includes('voyage')) {
-          suggestions = ['Paris → Bordeaux', 'Paris → Nantes', 'Mes prochains voyages'];
-        }
+      if (responseContent.toLowerCase().includes('prix') || responseContent.toLowerCase().includes('billet')) {
+        suggestions = ['Créer une alerte', 'Voir sur le dashboard', 'Comparer d\'autres dates'];
+      } else if (responseContent.toLowerCase().includes('train') || responseContent.toLowerCase().includes('voyage')) {
+        suggestions = ['Plus de détails', 'Voir mes options', 'Autre question'];
+      } else if (responseContent.toLowerCase().includes('bordeaux') || responseContent.toLowerCase().includes('paris')) {
+        suggestions = ['Infos destination', 'Météo prévue', 'Activités sur place'];
       }
 
       const assistantMessage: ChatMessage = {
@@ -97,7 +87,6 @@ export default function ChatScreen() {
         role: 'assistant',
         content: responseContent,
         timestamp: new Date().toISOString(),
-        cards: trainCards,
         suggestions,
       };
 
@@ -110,9 +99,9 @@ export default function ChatScreen() {
       const errorMessage: ChatMessage = {
         id: `msg-${Date.now()}-error`,
         role: 'assistant',
-        content: "Désolé, j'ai rencontré un problème. Réessaie dans quelques instants ! 🔄",
+        content: "Désolé, j'ai rencontré un problème. Réessaie dans quelques instants!",
         timestamp: new Date().toISOString(),
-        suggestions: chatSuggestions,
+        suggestions: ['Réessayer', 'Voir le dashboard', 'Autre question'],
       };
       addChatMessage(errorMessage);
     }
@@ -128,11 +117,11 @@ export default function ChatScreen() {
     }, 100);
   };
 
-  const handleTrainPress = (train: Train) => {
+  const handleQuickAction = (action: string) => {
     if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    router.push('/journey/search-results');
+    showToast(`Action: ${action}`, 'info');
   };
 
   return (
@@ -151,9 +140,9 @@ export default function ChatScreen() {
               <Ionicons name="sparkles" size={20} color="#fff" />
             </LinearGradient>
             <View>
-              <Text style={styles.headerTitle}>Velvet AI</Text>
+              <Text style={styles.headerTitle}>Assistant IA</Text>
               <Text style={styles.headerSubtitle}>
-                {isTyping ? 'En train de répondre...' : 'Votre assistant voyage intelligent'}
+                {isTyping ? 'En train de répondre...' : 'Questions complexes & planification'}
               </Text>
             </View>
           </View>
@@ -163,11 +152,20 @@ export default function ChatScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }
               useStore.getState().clearChat();
+              showToast('Conversation effacée', 'info');
             }}
             style={styles.clearButton}
           >
             <Ionicons name="refresh" size={20} color={Colors.textMuted} />
           </Pressable>
+        </Animated.View>
+
+        {/* Info Banner */}
+        <Animated.View entering={FadeInDown.delay(100).duration(300)} style={styles.infoBanner}>
+          <Ionicons name="information-circle" size={18} color={Colors.info} />
+          <Text style={styles.infoBannerText}>
+            Pour les recherches rapides, utilisez le dashboard. Le chat est idéal pour les questions complexes.
+          </Text>
         </Animated.View>
 
         {/* Chat Messages */}
@@ -182,15 +180,15 @@ export default function ChatScreen() {
             contentContainerStyle={styles.messagesContent}
             showsVerticalScrollIndicator={false}
           >
-            {chatMessages.map((message) => (
-              <ChatBubble
+            {chatMessages.map((message, index) => (
+              <ChatBubbleSimple
                 key={message.id}
                 message={message}
                 onSuggestionPress={handleSuggestionPress}
-                onTrainPress={handleTrainPress}
+                delay={index * 50}
               />
             ))}
-            {isTyping && <TypingIndicator />}
+            {isTyping && <TypingIndicatorSimple />}
             <View style={styles.bottomSpacer} />
           </ScrollView>
 
@@ -201,15 +199,10 @@ export default function ChatScreen() {
               style={styles.quickSuggestions}
             >
               <Text style={styles.quickSuggestionsTitle}>
-                Essayez de demander :
+                Questions complexes pour l'IA :
               </Text>
               <View style={styles.suggestionsGrid}>
-                {[
-                  { icon: 'train', text: 'Paris → Bordeaux demain' },
-                  { icon: 'trending-down', text: 'Prédiction de prix' },
-                  { icon: 'cash', text: 'Billets pas chers' },
-                  { icon: 'help-circle', text: 'Comment ça marche ?' },
-                ].map((suggestion, index) => (
+                {complexSuggestions.slice(0, 4).map((suggestion, index) => (
                   <Pressable
                     key={index}
                     onPress={() => handleSuggestionPress(suggestion.text)}
@@ -221,12 +214,15 @@ export default function ChatScreen() {
                     <View style={styles.suggestionCardInner}>
                       <View style={styles.suggestionIcon}>
                         <Ionicons
-                          name={suggestion.icon as any}
+                          name={suggestion.icon as keyof typeof Ionicons.glyphMap}
                           size={20}
                           color={Colors.primary}
                         />
                       </View>
-                      <Text style={styles.quickSuggestionText}>{suggestion.text}</Text>
+                      <View style={styles.suggestionTextContainer}>
+                        <Text style={styles.suggestionCategory}>{suggestion.category}</Text>
+                        <Text style={styles.quickSuggestionText}>{suggestion.text}</Text>
+                      </View>
                     </View>
                   </Pressable>
                 ))}
@@ -239,7 +235,7 @@ export default function ChatScreen() {
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
-                placeholder="Demandez-moi n'importe quoi..."
+                placeholder="Posez une question complexe..."
                 placeholderTextColor={Colors.textMuted}
                 value={inputText}
                 onChangeText={setInputText}
@@ -288,6 +284,77 @@ export default function ChatScreen() {
   );
 }
 
+// Simplified Chat Bubble (no train cards - those are on dashboard now)
+interface ChatBubbleSimpleProps {
+  message: ChatMessage;
+  onSuggestionPress: (suggestion: string) => void;
+  delay?: number;
+}
+
+function ChatBubbleSimple({ message, onSuggestionPress, delay = 0 }: ChatBubbleSimpleProps) {
+  const isUser = message.role === 'user';
+
+  return (
+    <Animated.View
+      entering={FadeInUp.delay(delay).springify()}
+      style={[styles.bubbleContainer, isUser && styles.bubbleContainerUser]}
+    >
+      {!isUser && (
+        <View style={styles.bubbleAvatar}>
+          <LinearGradient
+            colors={[Colors.primary, Colors.primaryDark]}
+            style={styles.avatarGradient}
+          >
+            <Ionicons name="sparkles" size={14} color="#fff" />
+          </LinearGradient>
+        </View>
+      )}
+      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
+        <Text style={[styles.bubbleText, isUser && styles.bubbleTextUser]}>
+          {message.content}
+        </Text>
+
+        {/* Suggestions */}
+        {message.suggestions && message.suggestions.length > 0 && (
+          <View style={styles.suggestionsRow}>
+            {message.suggestions.map((suggestion, index) => (
+              <Pressable
+                key={index}
+                onPress={() => onSuggestionPress(suggestion)}
+                style={styles.suggestionChip}
+              >
+                <Text style={styles.suggestionChipText}>{suggestion}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </View>
+    </Animated.View>
+  );
+}
+
+function TypingIndicatorSimple() {
+  return (
+    <Animated.View entering={FadeIn.duration(200)} style={styles.bubbleContainer}>
+      <View style={styles.bubbleAvatar}>
+        <LinearGradient
+          colors={[Colors.primary, Colors.primaryDark]}
+          style={styles.avatarGradient}
+        >
+          <Ionicons name="sparkles" size={14} color="#fff" />
+        </LinearGradient>
+      </View>
+      <View style={[styles.bubble, styles.bubbleAssistant, styles.typingBubble]}>
+        <View style={styles.typingDots}>
+          <View style={[styles.typingDot, styles.typingDot1]} />
+          <View style={[styles.typingDot, styles.typingDot2]} />
+          <View style={[styles.typingDot, styles.typingDot3]} />
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
@@ -327,6 +394,21 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: Spacing.sm,
+  },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    padding: Spacing.sm,
+    backgroundColor: Colors.infoLight,
+    borderRadius: BorderRadius.md,
+  },
+  infoBannerText: {
+    ...Typography.small,
+    color: Colors.info,
+    flex: 1,
   },
   chatContainer: {
     flex: 1,
@@ -380,10 +462,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  suggestionTextContainer: {
+    flex: 1,
+  },
+  suggestionCategory: {
+    ...Typography.small,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
   quickSuggestionText: {
     ...Typography.caption,
     color: Colors.textSecondary,
-    flex: 1,
   },
   inputContainer: {
     paddingHorizontal: Spacing.md,
@@ -436,5 +525,90 @@ const styles = StyleSheet.create({
   },
   tabBarSpacer: {
     height: 90,
+  },
+
+  // Chat Bubble Styles
+  bubbleContainer: {
+    flexDirection: 'row',
+    marginBottom: Spacing.md,
+    alignItems: 'flex-end',
+  },
+  bubbleContainerUser: {
+    justifyContent: 'flex-end',
+  },
+  bubbleAvatar: {
+    marginRight: Spacing.sm,
+  },
+  avatarGradient: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bubble: {
+    maxWidth: '75%',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+  },
+  bubbleUser: {
+    backgroundColor: Colors.navy,
+    borderBottomRightRadius: 4,
+    marginLeft: 'auto',
+  },
+  bubbleAssistant: {
+    backgroundColor: Colors.cardBackground,
+    borderBottomLeftRadius: 4,
+    ...Shadows.small,
+  },
+  bubbleText: {
+    ...Typography.body,
+    color: Colors.textPrimary,
+  },
+  bubbleTextUser: {
+    color: '#FFFFFF',
+  },
+  suggestionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.divider,
+  },
+  suggestionChip: {
+    backgroundColor: Colors.aiGlow,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
+  suggestionChipText: {
+    ...Typography.small,
+    color: Colors.primary,
+    fontWeight: '500',
+  },
+  typingBubble: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+  },
+  typingDots: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  typingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.textMuted,
+  },
+  typingDot1: {
+    opacity: 0.4,
+  },
+  typingDot2: {
+    opacity: 0.6,
+  },
+  typingDot3: {
+    opacity: 0.8,
   },
 });

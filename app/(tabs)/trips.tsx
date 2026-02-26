@@ -9,11 +9,20 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  Layout,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { GlassCard } from '../../src/components';
+import { GlassCard, showToast } from '../../src/components';
 import { useStore } from '../../src/store/store';
 import { formatTime, formatDate, getCountdown } from '../../src/services/navitia';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../src/constants/theme';
@@ -23,6 +32,7 @@ type TabType = 'upcoming' | 'past';
 
 export default function TripsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('upcoming');
+  const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
   const { upcomingTrips, pastTrips } = useStore();
 
   const handleTabChange = (tab: TabType) => {
@@ -30,12 +40,24 @@ export default function TripsScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     setActiveTab(tab);
+    setExpandedTripId(null);
+  };
+
+  const handleTripPress = (tripId: string) => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setExpandedTripId(expandedTripId === tripId ? null : tripId);
   };
 
   const trips = activeTab === 'upcoming' ? upcomingTrips : pastTrips;
 
-  // Calculate AI savings for past trips
-  const totalAISavings = pastTrips.reduce((acc, trip) => acc + (trip.aiSavings || 0), 0);
+  // Calculate AI savings for past trips (simulate some savings)
+  const totalAISavings = pastTrips.reduce((acc, trip, index) => {
+    // Simulate AI savings based on trip index
+    const savings = [34, 12, 28, 15, 42][index % 5] || 0;
+    return acc + savings;
+  }, 0);
 
   return (
     <LinearGradient
@@ -143,21 +165,21 @@ export default function TripsScreen() {
                   </Text>
                   <Text style={styles.emptySubtitle}>
                     {activeTab === 'upcoming'
-                      ? 'Planifiez votre prochain voyage avec Velvet AI'
+                      ? 'Réservez depuis le dashboard'
                       : 'Vos voyages terminés apparaîtront ici'}
                   </Text>
                   {activeTab === 'upcoming' && (
                     <Pressable
-                      onPress={() => router.push('/chat')}
+                      onPress={() => router.push('/')}
                       style={styles.emptyButton}
                     >
                       <LinearGradient
                         colors={[Colors.primary, Colors.primaryDark]}
                         style={styles.emptyButtonGradient}
                       >
-                        <Ionicons name="sparkles" size={16} color="#fff" />
+                        <Ionicons name="home" size={16} color="#fff" />
                         <Text style={styles.emptyButtonText}>
-                          Demander à l'IA
+                          Aller au dashboard
                         </Text>
                       </LinearGradient>
                     </Pressable>
@@ -176,6 +198,9 @@ export default function TripsScreen() {
                     index={index}
                     isLast={index === trips.length - 1}
                     isPast={activeTab === 'past'}
+                    isExpanded={expandedTripId === trip.id}
+                    onPress={() => handleTripPress(trip.id)}
+                    aiSavings={activeTab === 'past' ? [34, 12, 28, 15, 42][index % 5] : undefined}
                   />
                 ))}
               </View>
@@ -194,10 +219,22 @@ interface TripCardProps {
   index: number;
   isLast: boolean;
   isPast: boolean;
+  isExpanded: boolean;
+  onPress: () => void;
+  aiSavings?: number;
 }
 
-function TripCard({ trip, index, isLast, isPast }: TripCardProps) {
+function TripCard({ trip, index, isLast, isPast, isExpanded, onPress, aiSavings }: TripCardProps) {
   const countdown = getCountdown(trip.train.departure.time);
+  const rotateValue = useSharedValue(0);
+
+  React.useEffect(() => {
+    rotateValue.value = withSpring(isExpanded ? 180 : 0, { damping: 15 });
+  }, [isExpanded]);
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotateValue.value}deg` }],
+  }));
 
   const getStatusColor = () => {
     switch (trip.status) {
@@ -225,9 +262,17 @@ function TripCard({ trip, index, isLast, isPast }: TripCardProps) {
     }
   };
 
+  const handleQuickAction = (action: string) => {
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    showToast(`${action} effectué`, 'success');
+  };
+
   return (
     <Animated.View
       entering={FadeInDown.delay(index * 100 + 200).duration(400)}
+      layout={Layout.springify()}
       style={styles.tripCardContainer}
     >
       {/* Timeline dot and line */}
@@ -237,15 +282,7 @@ function TripCard({ trip, index, isLast, isPast }: TripCardProps) {
       </View>
 
       {/* Trip Card */}
-      <Pressable
-        style={styles.tripCard}
-        onPress={() => {
-          if (Platform.OS !== 'web') {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          }
-          router.push(`/journey/${trip.id}`);
-        }}
-      >
+      <Pressable style={styles.tripCard} onPress={onPress}>
         <View style={styles.tripCardInner}>
           <View style={styles.tripContent}>
             {/* Header */}
@@ -258,93 +295,155 @@ function TripCard({ trip, index, isLast, isPast }: TripCardProps) {
                   {formatDate(trip.train.departure.time)}
                 </Text>
               </View>
-              <View
-                style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20' }]}
-              >
-                <Text style={[styles.statusText, { color: getStatusColor() }]}>
-                  {getStatusLabel()}
-                </Text>
+              <View style={styles.headerRight}>
+                <View
+                  style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20' }]}
+                >
+                  <Text style={[styles.statusText, { color: getStatusColor() }]}>
+                    {getStatusLabel()}
+                  </Text>
+                </View>
+                <Animated.View style={chevronStyle}>
+                  <Ionicons name="chevron-down" size={20} color={Colors.textMuted} />
+                </Animated.View>
               </View>
             </View>
 
-            {/* Times */}
-            <View style={styles.timesRow}>
-              <View style={styles.timeBlock}>
-                <Text style={styles.timeLabel}>Départ</Text>
-                <Text style={styles.time}>
-                  {formatTime(trip.train.departure.time)}
-                </Text>
-              </View>
-              <View style={styles.durationContainer}>
-                <View style={styles.timeLine}>
-                  <View style={styles.timeDot} />
-                  <View style={styles.timeLineBar} />
-                  <Ionicons name="train" size={14} color={Colors.primary} />
+            {/* Compact Info Row */}
+            <View style={styles.compactInfo}>
+              <Text style={styles.compactTime}>
+                {formatTime(trip.train.departure.time)} → {formatTime(trip.train.arrival.time)}
+              </Text>
+              {trip.status === 'upcoming' && countdown && (
+                <View style={styles.countdownBadge}>
+                  <Ionicons name="time" size={12} color="#FFF" />
+                  <Text style={styles.countdownText}>
+                    {countdown.isToday
+                      ? `${countdown.hours}h ${countdown.minutes}m`
+                      : countdown.isTomorrow
+                      ? 'Demain'
+                      : `${countdown.days}j`}
+                  </Text>
                 </View>
-              </View>
-              <View style={[styles.timeBlock, styles.timeBlockRight]}>
-                <Text style={styles.timeLabel}>Arrivée</Text>
-                <Text style={styles.time}>
-                  {formatTime(trip.train.arrival.time)}
-                </Text>
-              </View>
+              )}
             </View>
 
             {/* AI Insight for past trips */}
-            {isPast && trip.aiSavings && trip.aiSavings > 0 && (
+            {isPast && aiSavings && aiSavings > 0 && (
               <View style={styles.aiInsight}>
                 <Ionicons name="sparkles" size={14} color={Colors.primary} />
                 <Text style={styles.aiInsightText}>
-                  Vous avez économisé <Text style={styles.aiSavingsText}>{trip.aiSavings}€</Text> grâce à l'IA
+                  Économisé <Text style={styles.aiSavingsText}>{aiSavings}€</Text> grâce à l'IA
                 </Text>
               </View>
             )}
 
-            {/* Details */}
-            <View style={styles.tripDetails}>
-              <View style={styles.detailItem}>
-                <Ionicons name="train" size={14} color={Colors.primary} />
-                <Text style={styles.detailText}>{trip.train.trainNumber}</Text>
-              </View>
-              {trip.coach && trip.seat && (
-                <View style={styles.detailItem}>
-                  <Ionicons name="location" size={14} color={Colors.primary} />
-                  <Text style={styles.detailText}>
-                    Voiture {trip.coach} • Place {trip.seat}
-                  </Text>
-                </View>
-              )}
-              {trip.status === 'upcoming' && countdown && (
-                <View style={styles.countdownContainer}>
-                  <View style={styles.countdownBadge}>
-                    <Ionicons name="time" size={12} color={Colors.primary} />
-                    <Text style={styles.countdownText}>
-                      {countdown.isToday
-                        ? `Dans ${countdown.hours}h ${countdown.minutes}min`
-                        : countdown.isTomorrow
-                        ? 'Demain'
-                        : `Dans ${countdown.days} jour${countdown.days > 1 ? 's' : ''}`}
+            {/* Expanded Content */}
+            {isExpanded && (
+              <Animated.View entering={FadeInUp.duration(200)} style={styles.expandedContent}>
+                <View style={styles.expandedDivider} />
+
+                {/* Full Times Row */}
+                <View style={styles.timesRow}>
+                  <View style={styles.timeBlock}>
+                    <Text style={styles.timeLabel}>Départ</Text>
+                    <Text style={styles.time}>
+                      {formatTime(trip.train.departure.time)}
+                    </Text>
+                    <Text style={styles.stationName}>{trip.train.departure.station.name}</Text>
+                    <Text style={styles.platformText}>Voie {trip.train.departure.platform}</Text>
+                  </View>
+                  <View style={styles.durationContainer}>
+                    <View style={styles.timeLine}>
+                      <View style={styles.timeDot} />
+                      <View style={styles.timeLineBar} />
+                      <Ionicons name="train" size={14} color={Colors.primary} />
+                      <View style={styles.timeLineBar} />
+                      <View style={[styles.timeDot, styles.timeDotFilled]} />
+                    </View>
+                    <Text style={styles.durationText}>
+                      {Math.floor(trip.train.duration / 60)}h{trip.train.duration % 60 > 0 ? String(trip.train.duration % 60).padStart(2, '0') : ''}
                     </Text>
                   </View>
+                  <View style={[styles.timeBlock, styles.timeBlockRight]}>
+                    <Text style={styles.timeLabel}>Arrivée</Text>
+                    <Text style={styles.time}>
+                      {formatTime(trip.train.arrival.time)}
+                    </Text>
+                    <Text style={styles.stationName}>{trip.train.arrival.station.name}</Text>
+                  </View>
                 </View>
-              )}
-            </View>
 
-            {/* Ticket Code */}
-            {trip.ticketCode && trip.status !== 'completed' && (
-              <View style={styles.ticketContainer}>
-                <View style={styles.ticketDivider} />
-                <View style={styles.ticketContent}>
-                  <View style={styles.qrPlaceholder}>
-                    <Ionicons name="qr-code" size={24} color={Colors.primary} />
+                {/* Details Grid */}
+                <View style={styles.detailsGrid}>
+                  <View style={styles.detailItem}>
+                    <Ionicons name="train-outline" size={18} color={Colors.primary} />
+                    <Text style={styles.detailLabel}>Train</Text>
+                    <Text style={styles.detailValue}>{trip.train.trainNumber}</Text>
                   </View>
-                  <View style={styles.ticketInfo}>
-                    <Text style={styles.ticketLabel}>Code billet</Text>
-                    <Text style={styles.ticketCode}>{trip.ticketCode}</Text>
+                  {trip.coach && (
+                    <View style={styles.detailItem}>
+                      <Ionicons name="cube-outline" size={18} color={Colors.primary} />
+                      <Text style={styles.detailLabel}>Voiture</Text>
+                      <Text style={styles.detailValue}>{trip.coach}</Text>
+                    </View>
+                  )}
+                  {trip.seat && (
+                    <View style={styles.detailItem}>
+                      <Ionicons name="person-outline" size={18} color={Colors.primary} />
+                      <Text style={styles.detailLabel}>Place</Text>
+                      <Text style={styles.detailValue}>{trip.seat}</Text>
+                    </View>
+                  )}
+                  <View style={styles.detailItem}>
+                    <Ionicons name="people-outline" size={18} color={Colors.primary} />
+                    <Text style={styles.detailLabel}>Passagers</Text>
+                    <Text style={styles.detailValue}>{trip.passengers || 1}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
                 </View>
-              </View>
+
+                {/* Ticket Code */}
+                {trip.ticketCode && trip.status !== 'completed' && (
+                  <View style={styles.ticketContainer}>
+                    <View style={styles.ticketContent}>
+                      <View style={styles.qrPlaceholder}>
+                        <Ionicons name="qr-code" size={32} color={Colors.primary} />
+                      </View>
+                      <View style={styles.ticketInfo}>
+                        <Text style={styles.ticketLabel}>Code billet</Text>
+                        <Text style={styles.ticketCode}>{trip.ticketCode}</Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Quick Actions */}
+                {trip.status === 'upcoming' && (
+                  <View style={styles.quickActions}>
+                    <Pressable
+                      style={styles.quickAction}
+                      onPress={() => handleQuickAction('Téléchargement')}
+                    >
+                      <Ionicons name="download-outline" size={18} color={Colors.primary} />
+                      <Text style={styles.quickActionText}>Télécharger</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.quickAction}
+                      onPress={() => handleQuickAction('Partage')}
+                    >
+                      <Ionicons name="share-outline" size={18} color={Colors.primary} />
+                      <Text style={styles.quickActionText}>Partager</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.quickAction, styles.quickActionWarning]}
+                      onPress={() => handleQuickAction('Modification')}
+                    >
+                      <Ionicons name="create-outline" size={18} color={Colors.warning} />
+                      <Text style={[styles.quickActionText, { color: Colors.warning }]}>Modifier</Text>
+                    </Pressable>
+                  </View>
+                )}
+              </Animated.View>
             )}
           </View>
         </View>
@@ -496,7 +595,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    marginTop: 24,
+    marginTop: 20,
   },
   timelineLine: {
     flex: 1,
@@ -535,6 +634,11 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   statusBadge: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
@@ -544,43 +648,27 @@ const styles = StyleSheet.create({
     ...Typography.small,
     fontWeight: '600',
   },
-  timesRow: {
+  compactInfo: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.xs,
-  },
-  timeBlock: {
-    flex: 1,
-  },
-  timeBlockRight: {
-    alignItems: 'flex-end',
-  },
-  timeLabel: {
-    ...Typography.small,
-    color: Colors.textMuted,
-  },
-  time: {
-    ...Typography.h2,
-    color: Colors.textPrimary,
-  },
-  durationContainer: {
-    flex: 1,
-    paddingHorizontal: Spacing.md,
-  },
-  timeLine: {
-    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  timeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  compactTime: {
+    ...Typography.bodyBold,
+    color: Colors.navy,
+  },
+  countdownBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
   },
-  timeLineBar: {
-    flex: 1,
-    height: 2,
-    backgroundColor: Colors.divider,
+  countdownText: {
+    ...Typography.smallBold,
+    color: '#FFF',
   },
   aiInsight: {
     flexDirection: 'row',
@@ -598,59 +686,112 @@ const styles = StyleSheet.create({
     color: Colors.success,
     fontWeight: '700',
   },
-  tripDetails: {
+  expandedContent: {
+    gap: Spacing.md,
+  },
+  expandedDivider: {
+    height: 1,
+    backgroundColor: Colors.divider,
+  },
+  timesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  timeBlock: {
+    flex: 1,
+  },
+  timeBlockRight: {
+    alignItems: 'flex-end',
+  },
+  timeLabel: {
+    ...Typography.small,
+    color: Colors.textMuted,
+  },
+  time: {
+    ...Typography.h2,
+    color: Colors.textPrimary,
+  },
+  stationName: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  platformText: {
+    ...Typography.smallBold,
+    color: Colors.primary,
+    marginTop: 2,
+  },
+  durationContainer: {
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingTop: Spacing.lg,
+  },
+  timeLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 60,
+  },
+  timeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  timeDotFilled: {
+    backgroundColor: Colors.primary,
+  },
+  timeLineBar: {
+    flex: 1,
+    height: 2,
+    backgroundColor: Colors.divider,
+  },
+  durationText: {
+    ...Typography.small,
+    color: Colors.textMuted,
+    marginTop: 4,
+  },
+  detailsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.sm,
-    alignItems: 'center',
   },
   detailItem: {
+    flex: 1,
+    minWidth: '45%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.backgroundTertiary,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
+    gap: Spacing.xs,
+    backgroundColor: Colors.backgroundSecondary,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
   },
-  detailText: {
+  detailLabel: {
     ...Typography.small,
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
   },
-  countdownContainer: {
+  detailValue: {
+    ...Typography.captionBold,
+    color: Colors.textPrimary,
     marginLeft: 'auto',
   },
-  countdownBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.aiGlow,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
-  },
-  countdownText: {
-    ...Typography.small,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
   ticketContainer: {
-    marginTop: Spacing.xs,
-  },
-  ticketDivider: {
-    height: 1,
-    backgroundColor: Colors.divider,
-    marginBottom: Spacing.sm,
+    backgroundColor: Colors.backgroundSecondary,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.divider,
+    borderStyle: 'dashed',
   },
   ticketContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: Spacing.md,
   },
   qrPlaceholder: {
-    width: 40,
-    height: 40,
-    backgroundColor: Colors.backgroundTertiary,
+    width: 60,
+    height: 60,
+    backgroundColor: Colors.cardBackground,
     borderRadius: BorderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
@@ -663,9 +804,31 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   ticketCode: {
-    ...Typography.bodyBold,
+    ...Typography.h3,
     color: Colors.textPrimary,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginTop: 2,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  quickAction: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    backgroundColor: Colors.aiGlow,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  quickActionWarning: {
+    backgroundColor: Colors.warningLight,
+  },
+  quickActionText: {
+    ...Typography.smallBold,
+    color: Colors.primary,
   },
   bottomSpacer: {
     height: 120,
