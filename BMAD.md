@@ -232,3 +232,82 @@ Velvet: "Voilà ce que j'ai trouvé pour samedi 🚄
 ---
 
 *Document préparé pour la présentation R&D Velvet — Février 2026*
+
+---
+
+## 11. 🔌 MCP — Model Context Protocol pour le Transport Ferroviaire
+
+### Le problème actuel
+Les LLMs (ChatGPT, Mistral, Claude) n'ont **aucun accès structuré** aux données ferroviaires. Quand un utilisateur demande "Quel train pour Bordeaux samedi ?", le LLM doit :
+1. Deviner quoi appeler
+2. Formater un appel REST à la main
+3. Parser une réponse JSON complexe
+4. Espérer ne pas halluciner
+
+→ Résultat : **lent, imprécis, fragile.**
+
+### La solution : MCP Navitia
+Un serveur **Model Context Protocol** (standard Anthropic) qui expose les données SNCF/Navitia comme des **outils typés** directement consommables par les LLMs.
+
+```
+┌─────────────────────────────────────────────────┐
+│                    LLM (Mistral/Claude)          │
+│  "Trouve-moi un train Paris→Bordeaux samedi"     │
+└───────────────────────┬─────────────────────────┘
+                        │ MCP Protocol
+┌───────────────────────┴─────────────────────────┐
+│              MCP Server Navitia                   │
+│                                                   │
+│  🔧 Tools disponibles :                          │
+│  ├── search_trains(from, to, date, passengers)   │
+│  ├── get_disruptions(line?, since?)              │
+│  ├── get_departures(station, count?)             │
+│  ├── get_station_info(query)                     │
+│  ├── get_price_history(route, days)              │
+│  ├── check_availability(train_id)                │
+│  ├── get_weather_destination(city)               │
+│  └── get_multimodal_options(station, destination)│
+│                                                   │
+│  📚 Resources :                                  │
+│  ├── stations://sncf (liste des gares)           │
+│  ├── routes://popular (trajets populaires)       │
+│  └── disruptions://live (perturbations en cours) │
+└───────────────────────┬─────────────────────────┘
+                        │ REST APIs
+         ┌──────────────┼──────────────┐
+         │              │              │
+    Navitia API    Open-Meteo    Transport.data
+    (SNCF)         (Météo)       .gouv.fr
+```
+
+### Avantages
+
+| Sans MCP | Avec MCP |
+|----------|----------|
+| LLM hallucine les horaires | Données temps réel vérifiées |
+| Appels API ad-hoc et fragiles | Outils typés et documentés |
+| Pas de contexte transport | Ressources riches (gares, lignes, tarifs) |
+| Chaque app réinvente la roue | Standard réutilisable par tout agent IA |
+| Clé API côté client (leak) | Clé côté serveur uniquement (sécurisé) |
+
+### Stack technique
+- **Runtime** : Node.js / TypeScript
+- **Protocole** : MCP SDK (`@modelcontextprotocol/sdk`)
+- **Transport** : stdio (local) ou SSE (remote)
+- **APIs backend** : Navitia, Open-Meteo, transport.data.gouv.fr
+- **Cache** : Redis (horaires rafraîchis toutes les 5 min)
+
+### Pourquoi c'est un game-changer pour Velvet
+1. **Première brique d'infrastructure IA** — pas juste une app, un **écosystème**
+2. **Réutilisable** — le MCP peut alimenter l'app mobile, le chatbot web, le service client, les agents internes
+3. **Scalable** — ajouter un nouveau tool = ajouter une fonction, pas refaire l'app
+4. **Sécurisé** — les clés API restent côté serveur, jamais exposées au client
+5. **Open standard** — MCP est le standard d'Anthropic, adopté par l'industrie
+
+### Impact R&D
+C'est **exactement** le type de livrables R&D qu'une compagnie comme Velvet cherche :
+- Innovation technique démontrée
+- Architecture pensée pour le scale
+- Combinaison IA + transport = différenciation massive
+- Propriété intellectuelle potentielle
+
