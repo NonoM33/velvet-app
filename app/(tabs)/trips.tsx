@@ -225,7 +225,7 @@ interface TripCardProps {
 }
 
 function TripCard({ trip, index, isLast, isPast, isExpanded, onPress, aiSavings }: TripCardProps) {
-  const countdown = getCountdown(trip.train.departure.time);
+  const countdown = trip?.train?.departure?.time ? getCountdown(trip.train.departure.time) : null;
   const rotateValue = useSharedValue(0);
 
   React.useEffect(() => {
@@ -289,10 +289,10 @@ function TripCard({ trip, index, isLast, isPast, isExpanded, onPress, aiSavings 
             <View style={styles.tripHeader}>
               <View style={styles.routeContainer}>
                 <Text style={styles.route}>
-                  {trip.train.departure.station.city} → {trip.train.arrival.station.city}
+                  {trip?.train?.departure?.station?.city ?? 'N/A'} → {trip?.train?.arrival?.station?.city ?? 'N/A'}
                 </Text>
                 <Text style={styles.tripDate}>
-                  {formatDate(trip.train.departure.time)}
+                  {formatDate(trip?.train?.departure?.time ?? '')}
                 </Text>
               </View>
               <View style={styles.headerRight}>
@@ -312,7 +312,7 @@ function TripCard({ trip, index, isLast, isPast, isExpanded, onPress, aiSavings 
             {/* Compact Info Row */}
             <View style={styles.compactInfo}>
               <Text style={styles.compactTime}>
-                {formatTime(trip.train.departure.time)} → {formatTime(trip.train.arrival.time)}
+                {formatTime(trip?.train?.departure?.time ?? '')} → {formatTime(trip?.train?.arrival?.time ?? '')}
               </Text>
               {trip.status === 'upcoming' && countdown && (
                 <View style={styles.countdownBadge}>
@@ -348,10 +348,10 @@ function TripCard({ trip, index, isLast, isPast, isExpanded, onPress, aiSavings 
                   <View style={styles.timeBlock}>
                     <Text style={styles.timeLabel}>Départ</Text>
                     <Text style={styles.time}>
-                      {formatTime(trip.train.departure.time)}
+                      {formatTime(trip?.train?.departure?.time ?? '')}
                     </Text>
-                    <Text style={styles.stationName}>{trip.train.departure.station.name}</Text>
-                    <Text style={styles.platformText}>Voie {trip.train.departure.platform}</Text>
+                    <Text style={styles.stationName}>{trip?.train?.departure?.station?.name ?? 'N/A'}</Text>
+                    <Text style={styles.platformText}>Voie {trip?.train?.departure?.platform ?? '—'}</Text>
                   </View>
                   <View style={styles.durationContainer}>
                     <View style={styles.timeLine}>
@@ -362,15 +362,15 @@ function TripCard({ trip, index, isLast, isPast, isExpanded, onPress, aiSavings 
                       <View style={[styles.timeDot, styles.timeDotFilled]} />
                     </View>
                     <Text style={styles.durationText}>
-                      {Math.floor(trip.train.duration / 60)}h{trip.train.duration % 60 > 0 ? String(trip.train.duration % 60).padStart(2, '0') : ''}
+                      {trip?.train?.duration ? `${Math.floor(trip.train.duration / 60)}h${trip.train.duration % 60 > 0 ? String(trip.train.duration % 60).padStart(2, '0') : ''}` : 'N/A'}
                     </Text>
                   </View>
                   <View style={[styles.timeBlock, styles.timeBlockRight]}>
                     <Text style={styles.timeLabel}>Arrivée</Text>
                     <Text style={styles.time}>
-                      {formatTime(trip.train.arrival.time)}
+                      {formatTime(trip?.train?.arrival?.time ?? '')}
                     </Text>
-                    <Text style={styles.stationName}>{trip.train.arrival.station.name}</Text>
+                    <Text style={styles.stationName}>{trip?.train?.arrival?.station?.name ?? 'N/A'}</Text>
                   </View>
                 </View>
 
@@ -379,7 +379,7 @@ function TripCard({ trip, index, isLast, isPast, isExpanded, onPress, aiSavings 
                   <View style={styles.detailItem}>
                     <Ionicons name="train-outline" size={18} color={Colors.primary} />
                     <Text style={styles.detailLabel}>Train</Text>
-                    <Text style={styles.detailValue}>{trip.train.trainNumber}</Text>
+                    <Text style={styles.detailValue}>{trip?.train?.trainNumber ?? 'N/A'}</Text>
                   </View>
                   {trip.coach && (
                     <View style={styles.detailItem}>

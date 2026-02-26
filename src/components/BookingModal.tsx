@@ -156,7 +156,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
               <Text style={styles.successTitle}>Réservation confirmée!</Text>
               <Text style={styles.successSubtitle}>
-                {train.origin.city} → {train.destination.city}
+                {train?.departure?.station?.city ?? 'N/A'} → {train?.arrival?.station?.city ?? 'N/A'}
               </Text>
               <Text style={styles.successPrice}>{totalPrice}€</Text>
             </View>
@@ -180,9 +180,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               <View style={styles.routeCard}>
                 <View style={styles.routeRow}>
                   <View style={styles.stationColumn}>
-                    <Text style={styles.timeText}>{formatTime(train.departureTime)}</Text>
-                    <Text style={styles.cityText}>{train.origin.city}</Text>
-                    <Text style={styles.stationText}>{train.origin.name}</Text>
+                    <Text style={styles.timeText}>{formatTime(train?.departure?.time ?? '')}</Text>
+                    <Text style={styles.cityText}>{train?.departure?.station?.city ?? 'N/A'}</Text>
+                    <Text style={styles.stationText}>{train?.departure?.station?.name ?? 'N/A'}</Text>
                   </View>
 
                   <View style={styles.durationColumn}>
@@ -193,19 +193,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       <View style={styles.line} />
                       <View style={[styles.dot, styles.dotFilled]} />
                     </View>
-                    <Text style={styles.durationText}>{train.duration}</Text>
+                    <Text style={styles.durationText}>{train?.duration ? `${Math.floor(train.duration / 60)}h${train.duration % 60 > 0 ? String(train.duration % 60).padStart(2, '0') : ''}` : 'N/A'}</Text>
                   </View>
 
                   <View style={[styles.stationColumn, styles.stationRight]}>
-                    <Text style={styles.timeText}>{formatTime(train.arrivalTime)}</Text>
-                    <Text style={styles.cityText}>{train.destination.city}</Text>
-                    <Text style={styles.stationText}>{train.destination.name}</Text>
+                    <Text style={styles.timeText}>{formatTime(train?.arrival?.time ?? '')}</Text>
+                    <Text style={styles.cityText}>{train?.arrival?.station?.city ?? 'N/A'}</Text>
+                    <Text style={styles.stationText}>{train?.arrival?.station?.name ?? 'N/A'}</Text>
                   </View>
                 </View>
 
                 <View style={styles.dateRow}>
                   <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
-                  <Text style={styles.dateText}>{formatDate(train.departureTime)}</Text>
+                  <Text style={styles.dateText}>{formatDate(train?.departure?.time ?? '')}</Text>
                 </View>
               </View>
 

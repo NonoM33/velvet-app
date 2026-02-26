@@ -31,10 +31,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { GlassCard, AnimatedCounter, BookingModal, showToast } from '../../src/components';
 import { useStore } from '../../src/store/store';
-import { formatTime, formatDate, getCountdown, searchTrainsByCity } from '../../src/services/navitia';
-import { parisBordeauxTrains, parisNantesTrains, weatherData } from '../../src/services/mockData';
+import { formatTime, formatDate, getCountdown, searchTrainsByCity, getDepartures, getDisruptions, Departure, Disruption as NavitiaDisruption } from '../../src/services/navitia';
+import { parisBordeauxTrains, parisNantesTrains, weatherData as mockWeatherData } from '../../src/services/mockData';
+import { getWeatherCached, getFallbackWeather } from '../../src/services/weather';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../src/constants/theme';
-import { Train } from '../../src/services/types';
+import { Train, Weather } from '../../src/services/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -100,9 +101,43 @@ export default function HomeScreen() {
   // Refresh state
   const [refreshing, setRefreshing] = useState(false);
 
+  // Real-time data state
+  const [liveDisruptions, setLiveDisruptions] = useState<NavitiaDisruption[]>([]);
+  const [liveDepartures, setLiveDepartures] = useState<Departure[]>([]);
+  const [liveWeather, setLiveWeather] = useState<Weather | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
   // Active route for price prediction
   const [activeRouteIndex, setActiveRouteIndex] = useState(0);
   const activeRoute = savedRoutes[activeRouteIndex];
+
+  // Fetch live data on mount
+  const fetchLiveData = useCallback(async () => {
+    setIsLoadingData(true);
+    try {
+      // Fetch disruptions
+      const disruptions = await getDisruptions();
+      setLiveDisruptions(disruptions);
+
+      // Fetch departures from Paris Montparnasse
+      const departures = await getDepartures('paris', 5);
+      setLiveDepartures(departures);
+
+      // Fetch weather for destination
+      const weatherCity = nextTrip?.train?.arrival?.station?.city || 'Bordeaux';
+      const weather = await getWeatherCached(weatherCity);
+      setLiveWeather(weather || getFallbackWeather(weatherCity));
+    } catch (error) {
+      console.error('Error fetching live data:', error);
+      setLiveWeather(getFallbackWeather('bordeaux'));
+    } finally {
+      setIsLoadingData(false);
+    }
+  }, [nextTrip]);
+
+  useEffect(() => {
+    fetchLiveData();
+  }, [fetchLiveData]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -157,16 +192,15 @@ export default function HomeScreen() {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    // Simulate refresh
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await fetchLiveData();
     setRefreshing(false);
-    showToast('Prédictions mises à jour', 'success');
-  }, []);
+    showToast('Données mises à jour', 'success');
+  }, [fetchLiveData]);
 
-  const countdown = nextTrip ? getCountdown(nextTrip.train.departure.time) : null;
-  const destinationWeather = nextTrip
-    ? weatherData[nextTrip.train.arrival.station.city.toLowerCase()]
-    : null;
+  const countdown = nextTrip?.train?.departure?.time ? getCountdown(nextTrip.train.departure.time) : null;
+  const destinationCity = nextTrip?.train?.arrival?.station?.city?.toLowerCase() ?? '';
+  // Use live weather data if available, otherwise fall back to mock data
+  const destinationWeather = liveWeather || (destinationCity ? (mockWeatherData[destinationCity] ?? null) : null);
 
   return (
     <LinearGradient
@@ -246,18 +280,34 @@ export default function HomeScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Perturbations Live</Text>
               <View style={styles.liveBadge}>
-                <PulsingDot color={Colors.error} />
+                <PulsingDot color={liveDisruptions.length > 0 ? Colors.error : Colors.success} />
                 <Text style={styles.liveText}>LIVE</Text>
               </View>
             </View>
-            {disruptions.map((disruption, index) => (
-              <DisruptionCard
-                key={disruption.id}
-                disruption={disruption}
-                delay={index * 100}
-                onSwap={() => handleSwapBooking(disruption.id)}
-              />
-            ))}
+            {liveDisruptions.length > 0 ? (
+              liveDisruptions.slice(0, 3).map((disruption, index) => (
+                <LiveDisruptionCard
+                  key={disruption.id}
+                  disruption={disruption}
+                  delay={index * 100}
+                />
+              ))
+            ) : isLoadingData ? (
+              <GlassCard variant="default" animated={false} style={styles.disruptionCardContainer}>
+                <View style={styles.noDisruptionsCard}>
+                  <Ionicons name="refresh" size={20} color={Colors.textMuted} />
+                  <Text style={styles.noDisruptionsText}>Chargement des perturbations...</Text>
+                </View>
+              </GlassCard>
+            ) : (
+              <GlassCard variant="default" animated={false} style={styles.disruptionCardContainer}>
+                <View style={styles.noDisruptionsCard}>
+                  <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+                  <Text style={styles.noDisruptionsText}>Aucune perturbation en cours ✅</Text>
+                  <Text style={styles.noDisruptionsSubtext}>Trafic normal sur toutes les lignes</Text>
+                </View>
+              </GlassCard>
+            )}
           </Animated.View>
 
           {/* SECTION 4: Mon Prochain Voyage */}
@@ -464,9 +514,9 @@ function SmartSearchSection({
                 </View>
                 <View style={styles.resultCenter}>
                   <Text style={styles.resultRoute}>
-                    {train.departure.station.city} → {train.arrival.station.city}
+                    {train.departure?.station?.city ?? '—'} → {train.arrival?.station?.city ?? '—'}
                   </Text>
-                  <Text style={styles.resultTrain}>{train.trainNumber}</Text>
+                  <Text style={styles.resultTrain}>{train.trainNumber ?? '—'}</Text>
                 </View>
                 <View style={styles.resultRight}>
                   {train.originalPrice && (
@@ -621,11 +671,51 @@ function DisruptionCard({ disruption, delay, onSwap }: DisruptionCardProps) {
   );
 }
 
+// ============= LIVE DISRUPTION CARD (for real API data) =============
+interface LiveDisruptionCardProps {
+  disruption: NavitiaDisruption;
+  delay: number;
+}
+
+function LiveDisruptionCard({ disruption, delay }: LiveDisruptionCardProps) {
+  return (
+    <Animated.View entering={FadeInUp.delay(delay).springify()}>
+      <GlassCard variant="default" animated={false} style={styles.disruptionCardContainer}>
+        <View style={styles.disruptionCard}>
+          <View style={styles.disruptionLeft}>
+            <View style={styles.disruptionIcon}>
+              <Ionicons name="warning" size={20} color={Colors.warning} />
+            </View>
+          </View>
+          <View style={styles.disruptionContent}>
+            <View style={styles.disruptionHeader}>
+              <Text style={styles.disruptionTitle} numberOfLines={2}>
+                ⚠️ {disruption.title}
+              </Text>
+            </View>
+            {disruption.affectedLines.length > 0 && (
+              <Text style={styles.disruptionTrain} numberOfLines={1}>
+                Lignes: {disruption.affectedLines.slice(0, 3).join(', ')}
+              </Text>
+            )}
+            <View style={styles.aiSolution}>
+              <Text style={styles.aiSolutionIcon}>ℹ️</Text>
+              <Text style={styles.aiSolutionText} numberOfLines={2}>
+                {disruption.message?.substring(0, 100) || 'Consultez les horaires pour les alternatives'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </GlassCard>
+    </Animated.View>
+  );
+}
+
 // ============= NEXT TRIP CARD =============
 interface NextTripCardProps {
   trip: typeof import('../../src/services/mockData').userTrips[0];
   countdown: ReturnType<typeof getCountdown>;
-  weather: typeof weatherData[string] | null;
+  weather: Weather | null;
   expanded: boolean;
   onToggleExpanded: () => void;
 }
@@ -639,7 +729,7 @@ function NextTripCard({ trip, countdown, weather, expanded, onToggleExpanded }: 
           <View style={styles.tripCompact}>
             <View style={styles.tripMainInfo}>
               <Text style={styles.tripRouteText}>
-                {trip.train.departure.station.city} → {trip.train.arrival.station.city}
+                {trip?.train?.departure?.station?.city ?? '—'} → {trip?.train?.arrival?.station?.city ?? '—'}
               </Text>
               {countdown && (
                 <CountdownTimer countdown={countdown} />
@@ -648,7 +738,7 @@ function NextTripCard({ trip, countdown, weather, expanded, onToggleExpanded }: 
             <View style={styles.tripQuickInfo}>
               <View style={styles.tripInfoChip}>
                 <Ionicons name="location" size={14} color={Colors.primary} />
-                <Text style={styles.tripInfoText}>Voie {trip.train.departure.platform}</Text>
+                <Text style={styles.tripInfoText}>Voie {trip?.train?.departure?.platform ?? '—'}</Text>
               </View>
               <View style={styles.tripInfoChip}>
                 <Ionicons name="person" size={14} color={Colors.primary} />
@@ -1228,6 +1318,24 @@ const styles = StyleSheet.create({
   swapButtonText: {
     ...Typography.smallBold,
     color: '#FFF',
+  },
+  noDisruptionsCard: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.lg,
+    gap: Spacing.xs,
+  },
+  noDisruptionsText: {
+    ...Typography.body,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  noDisruptionsSubtext: {
+    ...Typography.small,
+    color: Colors.textMuted,
+    textAlign: 'center',
   },
 
   // Next Trip Card

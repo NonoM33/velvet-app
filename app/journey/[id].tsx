@@ -46,7 +46,7 @@ export default function JourneyDetailScreen() {
   if (!train) {
     return (
       <LinearGradient
-        colors={[Colors.background, Colors.backgroundLight, Colors.background]}
+        colors={[Colors.background, Colors.backgroundSecondary, Colors.background]}
         style={styles.gradient}
       >
         <SafeAreaView style={styles.container}>
@@ -61,9 +61,9 @@ export default function JourneyDetailScreen() {
     );
   }
 
-  const countdown = getCountdown(train.departure.time);
-  const destinationCity = train.arrival.station.city.toLowerCase();
-  const weather = weatherData[destinationCity];
+  const countdown = train?.departure?.time ? getCountdown(train.departure.time) : null;
+  const destinationCity = train?.arrival?.station?.city?.toLowerCase() ?? '';
+  const weather = destinationCity ? (weatherData[destinationCity] ?? null) : null;
 
   const getPriceColor = () => {
     if (train.price <= 29) return Colors.priceGreen;
@@ -73,7 +73,7 @@ export default function JourneyDetailScreen() {
 
   return (
     <LinearGradient
-      colors={[Colors.background, Colors.backgroundLight, Colors.background]}
+      colors={[Colors.background, Colors.backgroundSecondary, Colors.background]}
       style={styles.gradient}
     >
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -98,22 +98,22 @@ export default function JourneyDetailScreen() {
                 {/* Route Header */}
                 <View style={styles.routeHeader}>
                   <Text style={styles.routeText}>
-                    {train.departure.station.city} → {train.arrival.station.city}
+                    {train?.departure?.station?.city ?? 'N/A'} → {train?.arrival?.station?.city ?? 'N/A'}
                   </Text>
-                  <OccupancyGauge level={train.occupancy} />
+                  <OccupancyGauge level={train?.occupancy ?? 'medium'} />
                 </View>
 
                 <Text style={styles.dateText}>
-                  {formatDate(train.departure.time)}
+                  {formatDate(train?.departure?.time ?? '')}
                 </Text>
 
                 {/* Times */}
                 <View style={styles.timesContainer}>
                   <View style={styles.timeSection}>
                     <Text style={styles.timeLabel}>Départ</Text>
-                    <Text style={styles.time}>{formatTime(train.departure.time)}</Text>
-                    <Text style={styles.station}>{train.departure.station.name}</Text>
-                    {train.departure.platform && (
+                    <Text style={styles.time}>{formatTime(train?.departure?.time ?? '')}</Text>
+                    <Text style={styles.station}>{train?.departure?.station?.name ?? 'N/A'}</Text>
+                    {train?.departure?.platform && (
                       <View style={styles.platformBadge}>
                         <Text style={styles.platformText}>
                           Voie {train.departure.platform}
@@ -126,9 +126,9 @@ export default function JourneyDetailScreen() {
                     <View style={styles.lineDot} />
                     <View style={styles.lineVertical} />
                     <View style={styles.durationBadge}>
-                      <Ionicons name="train" size={16} color={Colors.primaryEnd} />
+                      <Ionicons name="train" size={16} color={Colors.primaryDark} />
                       <Text style={styles.durationText}>
-                        {formatDuration(train.duration)}
+                        {formatDuration(train?.duration ?? 0)}
                       </Text>
                     </View>
                     <View style={styles.lineVertical} />
@@ -137,9 +137,9 @@ export default function JourneyDetailScreen() {
 
                   <View style={[styles.timeSection, styles.timeSectionRight]}>
                     <Text style={styles.timeLabel}>Arrivée</Text>
-                    <Text style={styles.time}>{formatTime(train.arrival.time)}</Text>
-                    <Text style={styles.station}>{train.arrival.station.name}</Text>
-                    {train.arrival.platform && (
+                    <Text style={styles.time}>{formatTime(train?.arrival?.time ?? '')}</Text>
+                    <Text style={styles.station}>{train?.arrival?.station?.name ?? 'N/A'}</Text>
+                    {train?.arrival?.platform && (
                       <View style={styles.platformBadge}>
                         <Text style={styles.platformText}>
                           Voie {train.arrival.platform}
@@ -152,22 +152,22 @@ export default function JourneyDetailScreen() {
                 {/* Train Info */}
                 <View style={styles.trainInfo}>
                   <View style={styles.trainBadge}>
-                    <Text style={styles.trainNumber}>{train.trainNumber}</Text>
+                    <Text style={styles.trainNumber}>{train?.trainNumber ?? 'N/A'}</Text>
                   </View>
                   <View style={styles.amenities}>
-                    {train.amenities.includes('wifi') && (
+                    {train?.amenities?.includes('wifi') && (
                       <View style={styles.amenityBadge}>
                         <Ionicons name="wifi" size={14} color={Colors.textSecondary} />
                         <Text style={styles.amenityText}>WiFi</Text>
                       </View>
                     )}
-                    {train.amenities.includes('power') && (
+                    {train?.amenities?.includes('power') && (
                       <View style={styles.amenityBadge}>
                         <Ionicons name="flash" size={14} color={Colors.textSecondary} />
                         <Text style={styles.amenityText}>Prise</Text>
                       </View>
                     )}
-                    {train.amenities.includes('bar') && (
+                    {train?.amenities?.includes('bar') && (
                       <View style={styles.amenityBadge}>
                         <Ionicons
                           name="restaurant"
@@ -189,10 +189,10 @@ export default function JourneyDetailScreen() {
               <GlassCard animated={false}>
                 <View style={styles.countdownCard}>
                   <LinearGradient
-                    colors={[Colors.primaryStart + '30', Colors.primaryEnd + '30']}
+                    colors={[Colors.primary + '30', Colors.primaryDark + '30']}
                     style={styles.countdownIcon}
                   >
-                    <Ionicons name="time" size={24} color={Colors.primaryEnd} />
+                    <Ionicons name="time" size={24} color={Colors.primaryDark} />
                   </LinearGradient>
                   <View style={styles.countdownInfo}>
                     <Text style={styles.countdownTitle}>
@@ -246,7 +246,7 @@ export default function JourneyDetailScreen() {
           )}
 
           {/* Price Prediction (for non-booked trains) */}
-          {!trip && train.pricePrediction && (
+          {!trip && train?.pricePrediction && (
             <Animated.View entering={FadeInDown.delay(300).duration(400)}>
               <Text style={styles.sectionTitle}>📊 Prédiction de prix</Text>
               <GlassCard animated={false}>
@@ -272,27 +272,27 @@ export default function JourneyDetailScreen() {
                   <View style={styles.recommendationBox}>
                     <LinearGradient
                       colors={
-                        train.priceRecommendation === 'buy_now'
+                        train?.priceRecommendation === 'buy_now'
                           ? [Colors.success + '20', Colors.success + '20']
-                          : train.priceRecommendation === 'wait'
+                          : train?.priceRecommendation === 'wait'
                           ? [Colors.warning + '20', Colors.warning + '20']
-                          : [Colors.glassBorder, Colors.glassBorder]
+                          : [Colors.divider, Colors.divider]
                       }
                       style={styles.recommendationGradient}
                     >
                       <Ionicons
                         name={
-                          train.priceRecommendation === 'buy_now'
+                          train?.priceRecommendation === 'buy_now'
                             ? 'checkmark-circle'
-                            : train.priceRecommendation === 'wait'
+                            : train?.priceRecommendation === 'wait'
                             ? 'time'
                             : 'help-circle'
                         }
                         size={20}
                         color={
-                          train.priceRecommendation === 'buy_now'
+                          train?.priceRecommendation === 'buy_now'
                             ? Colors.success
-                            : train.priceRecommendation === 'wait'
+                            : train?.priceRecommendation === 'wait'
                             ? Colors.warning
                             : Colors.textMuted
                         }
@@ -303,25 +303,25 @@ export default function JourneyDetailScreen() {
                             styles.recommendationTitle,
                             {
                               color:
-                                train.priceRecommendation === 'buy_now'
+                                train?.priceRecommendation === 'buy_now'
                                   ? Colors.success
-                                  : train.priceRecommendation === 'wait'
+                                  : train?.priceRecommendation === 'wait'
                                   ? Colors.warning
                                   : Colors.textSecondary,
                             },
                           ]}
                         >
-                          {train.priceRecommendation === 'buy_now'
+                          {train?.priceRecommendation === 'buy_now'
                             ? 'Achetez maintenant !'
-                            : train.priceRecommendation === 'wait'
+                            : train?.priceRecommendation === 'wait'
                             ? 'Attendez quelques jours'
                             : 'Prix stable'}
                         </Text>
                         <Text style={styles.recommendationDetail}>
-                          {train.priceRecommendation === 'buy_now'
-                            ? `${Math.round(train.pricePrediction.confidence * 100)}% de chances que le prix augmente`
-                            : train.priceRecommendation === 'wait'
-                            ? `Prix prévu: ${train.pricePrediction.predictedPrice}€`
+                          {train?.priceRecommendation === 'buy_now'
+                            ? `${Math.round((train?.pricePrediction?.confidence ?? 0) * 100)}% de chances que le prix augmente`
+                            : train?.priceRecommendation === 'wait'
+                            ? `Prix prévu: ${train?.pricePrediction?.predictedPrice ?? 'N/A'}€`
                             : 'Le prix devrait rester stable'}
                         </Text>
                       </View>
@@ -336,7 +336,7 @@ export default function JourneyDetailScreen() {
           {weather && (
             <Animated.View entering={FadeInDown.delay(350).duration(400)}>
               <Text style={styles.sectionTitle}>
-                ☀️ Météo à {train.arrival.station.city}
+                ☀️ Météo à {train?.arrival?.station?.city ?? 'destination'}
               </Text>
               <GlassCard animated={false}>
                 <View style={styles.weatherCard}>
@@ -361,14 +361,14 @@ export default function JourneyDetailScreen() {
           >
             <Pressable onPress={handleBook} style={styles.bookButton}>
               <LinearGradient
-                colors={[Colors.primaryStart, Colors.primaryEnd]}
+                colors={[Colors.primary, Colors.primaryDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.bookGradient}
               >
                 <View style={styles.bookContent}>
                   <View>
-                    <Text style={styles.bookPrice}>{train.price}€</Text>
+                    <Text style={styles.bookPrice}>{train?.price ?? 'N/A'}€</Text>
                     <Text style={styles.bookLabel}>par personne</Text>
                   </View>
                   <View style={styles.bookAction}>
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.glassBorder,
+    borderBottomColor: Colors.divider,
   },
   backButton: {
     padding: Spacing.xs,
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
   errorButton: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
-    backgroundColor: Colors.primaryEnd,
+    backgroundColor: Colors.primaryDark,
     borderRadius: BorderRadius.full,
   },
   errorButtonText: {
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   platformBadge: {
-    backgroundColor: Colors.primaryEnd + '20',
+    backgroundColor: Colors.primaryDark + '20',
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     borderRadius: BorderRadius.sm,
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
   },
   platformText: {
     ...Typography.small,
-    color: Colors.primaryEnd,
+    color: Colors.primaryDark,
     fontWeight: '600',
   },
   journeyLine: {
@@ -500,18 +500,18 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.primaryEnd,
+    backgroundColor: Colors.primaryDark,
   },
   lineVertical: {
     width: 2,
     flex: 1,
-    backgroundColor: Colors.glassBorder,
+    backgroundColor: Colors.divider,
   },
   durationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Colors.backgroundLight,
+    backgroundColor: Colors.backgroundSecondary,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 6,
     borderRadius: BorderRadius.sm,
@@ -528,10 +528,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: Colors.glassBorder,
+    borderTopColor: Colors.divider,
   },
   trainBadge: {
-    backgroundColor: Colors.backgroundLight,
+    backgroundColor: Colors.backgroundSecondary,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     borderRadius: BorderRadius.sm,
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
   },
   ticketDivider: {
     height: 1,
-    backgroundColor: Colors.glassBorder,
+    backgroundColor: Colors.divider,
   },
   predictionCard: {
     gap: Spacing.md,
@@ -693,9 +693,9 @@ const styles = StyleSheet.create({
     right: 0,
     padding: Spacing.md,
     paddingBottom: Platform.OS === 'ios' ? 34 : Spacing.md,
-    backgroundColor: 'rgba(13, 13, 26, 0.95)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopWidth: 1,
-    borderTopColor: Colors.glassBorder,
+    borderTopColor: Colors.divider,
   },
   bookButton: {
     borderRadius: BorderRadius.lg,
