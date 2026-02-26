@@ -1,4 +1,4 @@
-const HF_API_KEY = 'REDACTED';
+const HF_API_KEY = process.env.EXPO_PUBLIC_HF_API_KEY || '';
 const MODEL_ID = 'mistralai/Mistral-7B-Instruct-v0.3';
 
 const SYSTEM_PROMPT = `Tu es Velvet AI, un assistant de voyage ferroviaire français amical et professionnel. Tu aides les utilisateurs à trouver des trains, prédire les prix et planifier leurs voyages. Tu travailles pour Velvet, une compagnie de train à grande vitesse en France.
