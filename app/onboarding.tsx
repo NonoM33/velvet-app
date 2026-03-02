@@ -55,7 +55,7 @@ function Screen1() {
 
   return (
     <LinearGradient
-      colors={['#FFFFFF', '#FDF0FF']}
+      colors={[Colors.backgroundGradientStart, Colors.backgroundGradientEnd]}
       style={styles.screen}
     >
       <View style={styles.screenContent}>

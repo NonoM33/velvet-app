@@ -1,3 +1,9 @@
+/**
+ * Components Index
+ * Re-exports all components for easy importing
+ */
+
+// Legacy components
 export { GlassCard } from './GlassCard';
 export { TrainCard } from './TrainCard';
 export { OccupancyGauge } from './OccupancyGauge';
@@ -10,3 +16,9 @@ export { BookingModal } from './BookingModal';
 export { DemoToast, DemoNotification } from './DemoToast';
 export { DemoOverlay } from './DemoOverlay';
 export { DemoControlFAB } from './DemoControlFAB';
+
+// New UI Primitives
+export * from './ui';
+
+// Home screen components
+export * from './home';

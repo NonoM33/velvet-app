@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { GlassCard, AnimatedCounter, showToast } from '../../src/components';
 import { useStore } from '../../src/store/store';
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../src/constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows, Layout } from '../../src/constants/theme';
 import { demoToasts } from '../../src/services/demoData';
 
 export default function ProfileScreen() {

@@ -1,12 +1,17 @@
+/**
+ * GlassCard Component (Legacy wrapper)
+ * Use Card from ./ui/Card.tsx for new components
+ */
 import React from 'react';
-import { StyleSheet, View, ViewStyle, Pressable } from 'react-native';
+import { StyleSheet, View, ViewStyle, Pressable, Platform } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   FadeInDown,
 } from 'react-native-reanimated';
-import { Colors, BorderRadius, Spacing, Shadows } from '../constants/theme';
+import * as Haptics from 'expo-haptics';
+import { Colors, BorderRadius, Spacing, Shadows, Motion } from '../constants/theme';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -15,6 +20,7 @@ interface GlassCardProps {
   animated?: boolean;
   delay?: number;
   variant?: 'default' | 'elevated' | 'ai' | 'flat';
+  haptic?: boolean;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -26,6 +32,7 @@ export function GlassCard({
   animated = true,
   delay = 0,
   variant = 'default',
+  haptic = true,
 }: GlassCardProps) {
   const scale = useSharedValue(1);
 
@@ -35,19 +42,26 @@ export function GlassCard({
 
   const handlePressIn = () => {
     if (onPress) {
-      scale.value = withSpring(0.98, { damping: 15 });
+      scale.value = withSpring(0.98, Motion.spring.snappy);
     }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15 });
+    scale.value = withSpring(1, Motion.spring.snappy);
+  };
+
+  const handlePress = () => {
+    if (haptic && Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onPress?.();
   };
 
   const getVariantStyles = (): ViewStyle => {
     switch (variant) {
       case 'elevated':
         return {
-          ...Shadows.medium,
+          ...Shadows.md,
           backgroundColor: Colors.cardBackground,
           borderWidth: 0,
         };
@@ -56,16 +70,17 @@ export function GlassCard({
           ...Shadows.glow,
           backgroundColor: Colors.cardBackground,
           borderWidth: 1,
-          borderColor: Colors.primary + '30',
+          borderColor: Colors.primaryGhost,
         };
       case 'flat':
         return {
           backgroundColor: Colors.backgroundSecondary,
           borderWidth: 0,
+          ...Shadows.none,
         };
       default:
         return {
-          ...Shadows.small,
+          ...Shadows.sm,
           backgroundColor: Colors.cardBackground,
           borderWidth: 1,
           borderColor: Colors.cardBorder,
@@ -82,7 +97,7 @@ export function GlassCard({
   if (onPress) {
     return (
       <AnimatedPressable
-        onPress={onPress}
+        onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={animatedStyle}

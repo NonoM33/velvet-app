@@ -19,7 +19,7 @@ import { useStore } from '../../src/store/store';
 import { sendChatMessage } from '../../src/services/huggingface';
 import { ChatMessage } from '../../src/services/types';
 import { chatSuggestions } from '../../src/services/mockData';
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../src/constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows, Layout, Motion } from '../../src/constants/theme';
 
 // Complex query suggestions - chat is for advanced questions
 const complexSuggestions = [
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
   },
   bubbleUser: {
-    backgroundColor: Colors.navy,
+    backgroundColor: Colors.primary,
     borderBottomRightRadius: 4,
     marginLeft: 'auto',
   },

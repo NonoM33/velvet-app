@@ -1,15 +1,26 @@
-import React from 'react';
-import { StyleSheet, View, Text, Pressable, Platform } from 'react-native';
+/**
+ * TabBar Component
+ * Premium custom tab bar with smooth animations
+ */
+import React, { useEffect } from 'react';
+import { StyleSheet, View, Text, Pressable, Platform, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
   interpolate,
+  interpolateColor,
+  Easing,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows, Motion } from '../constants/theme';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface TabBarProps {
   state: {
@@ -31,6 +42,11 @@ const tabs = [
 export function TabBar({ state, navigation }: TabBarProps) {
   return (
     <View style={styles.container}>
+      {/* Blur background for iOS */}
+      {Platform.OS === 'ios' && (
+        <BlurView intensity={80} tint="light" style={styles.blur} />
+      )}
+
       <View style={styles.tabBarContainer}>
         <View style={styles.tabsContainer}>
           {tabs.map((tab, index) => (
@@ -60,62 +76,90 @@ interface TabButtonProps {
 
 function TabButton({ tab, isActive, onPress }: TabButtonProps) {
   const scale = useSharedValue(1);
-  const activeValue = useSharedValue(isActive ? 1 : 0);
+  const activeProgress = useSharedValue(isActive ? 1 : 0);
+  const labelWidth = useSharedValue(isActive ? 1 : 0);
 
-  React.useEffect(() => {
-    activeValue.value = withSpring(isActive ? 1 : 0, { damping: 15 });
+  useEffect(() => {
+    activeProgress.value = withSpring(isActive ? 1 : 0, Motion.spring.snappy);
+    labelWidth.value = withTiming(isActive ? 1 : 0, {
+      duration: Motion.duration.fast,
+      easing: Easing.out(Easing.ease),
+    });
   }, [isActive]);
-
-  const iconAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        scale: interpolate(activeValue.value, [0, 1], [1, 1.1]),
-      },
-      {
-        translateY: interpolate(activeValue.value, [0, 1], [0, -2]),
-      },
-    ],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.9, { damping: 15 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15 });
-  };
 
   const containerStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: interpolate(activeProgress.value, [0, 1], [1, 1.15]) },
+      { translateY: interpolate(activeProgress.value, [0, 1], [0, -1]) },
+    ],
+  }));
+
+  const labelStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(labelWidth.value, [0, 0.5, 1], [0, 0, 1]),
+    transform: [
+      { translateX: interpolate(labelWidth.value, [0, 1], [-4, 0]) },
+    ],
+    maxWidth: interpolate(labelWidth.value, [0, 1], [0, 80]),
+  }));
+
+  const backgroundStyle = useAnimatedStyle(() => ({
+    opacity: activeProgress.value,
+    transform: [
+      { scale: interpolate(activeProgress.value, [0, 1], [0.8, 1]) },
+    ],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.92, Motion.spring.snappy);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, Motion.spring.snappy);
+  };
+
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={styles.tabButton}
+      style={[styles.tabButton, containerStyle]}
     >
-      <Animated.View style={[styles.tabContent, containerStyle]}>
-        {isActive ? (
-          <LinearGradient
-            colors={[Colors.primary, Colors.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.activeBackground}
-          >
-            <Animated.View style={iconAnimatedStyle}>
-              <Ionicons name={tab.icon} size={20} color="#FFFFFF" />
-            </Animated.View>
-            <Text style={styles.activeLabel}>{tab.label}</Text>
-          </LinearGradient>
-        ) : (
-          <View style={styles.inactiveContent}>
-            <Ionicons name={`${tab.icon}-outline` as any} size={20} color={Colors.textMuted} />
-          </View>
-        )}
+      {/* Active Background */}
+      <Animated.View style={[styles.activeBackgroundWrapper, backgroundStyle]}>
+        <LinearGradient
+          colors={[Colors.primary, Colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.activeBackground}
+        />
       </Animated.View>
-    </Pressable>
+
+      {/* Content */}
+      <View style={styles.tabContent}>
+        <Animated.View style={iconStyle}>
+          <Ionicons
+            name={isActive ? tab.icon : (`${tab.icon}-outline` as any)}
+            size={22}
+            color={isActive ? '#FFFFFF' : Colors.textTertiary}
+          />
+        </Animated.View>
+
+        <Animated.Text
+          style={[
+            styles.tabLabel,
+            isActive ? styles.tabLabelActive : styles.tabLabelInactive,
+            labelStyle,
+          ]}
+          numberOfLines={1}
+        >
+          {tab.label}
+        </Animated.Text>
+      </View>
+    </AnimatedPressable>
   );
 }
 
@@ -125,15 +169,23 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
     paddingHorizontal: Spacing.md,
+  },
+  blur: {
+    position: 'absolute',
+    top: -20,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   tabBarContainer: {
     borderRadius: BorderRadius.xxl,
-    backgroundColor: Colors.cardBackground,
-    ...Shadows.large,
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.9)' : Colors.surface,
+    ...Shadows.lg,
     borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    borderColor: Colors.border,
+    overflow: 'hidden',
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -145,25 +197,38 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     alignItems: 'center',
-  },
-  tabContent: {
-    alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
+    position: 'relative',
+  },
+  activeBackgroundWrapper: {
+    position: 'absolute',
+    borderRadius: BorderRadius.full,
+    overflow: 'hidden',
   },
   activeBackground: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.smd,
+  },
+  tabContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.smd,
     paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
+    zIndex: 1,
   },
-  activeLabel: {
-    ...Typography.small,
-    color: '#FFFFFF',
+  tabLabel: {
     fontWeight: '600',
+    overflow: 'hidden',
   },
-  inactiveContent: {
-    padding: Spacing.sm,
+  tabLabelActive: {
+    ...Typography.captionMedium,
+    color: '#FFFFFF',
+  },
+  tabLabelInactive: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
   },
 });

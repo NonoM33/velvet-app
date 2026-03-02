@@ -1,12 +1,24 @@
+/**
+ * TrainCard Component
+ * Premium train result card with AI scoring and animations
+ */
 import React from 'react';
-import { StyleSheet, View, Text, Pressable } from 'react-native';
+import { StyleSheet, View, Text, Pressable, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInRight } from 'react-native-reanimated';
+import Animated, {
+  FadeInRight,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { OccupancyGauge } from './OccupancyGauge';
 import { Train } from '../services/types';
 import { formatDuration, formatTime } from '../services/navitia';
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows, Motion } from '../constants/theme';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface TrainCardProps {
   train: Train;
@@ -23,19 +35,39 @@ export function TrainCard({
   delay = 0,
   compact = false,
 }: TrainCardProps) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.98, Motion.spring.snappy);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, Motion.spring.snappy);
+  };
+
+  const handlePress = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onPress?.();
+  };
+
   const getPriceColor = () => {
-    if (train.price <= 29) return Colors.priceGreen;
-    if (train.price <= 55) return Colors.priceOrange;
-    return Colors.priceRed;
+    if (train.price <= 29) return Colors.priceExcellent;
+    if (train.price <= 55) return Colors.priceHigh;
+    return Colors.priceVeryHigh;
   };
 
   const getPriceLabel = () => {
-    if (train.priceRecommendation === 'buy_now') return 'Acheter maintenant';
-    if (train.priceRecommendation === 'wait') return 'Prix va baisser ↓';
+    if (train.priceRecommendation === 'buy_now') return 'Réserver maintenant';
+    if (train.priceRecommendation === 'wait') return 'Prix va baisser';
     return null;
   };
 
-  // AI Score calculation (simplified demo)
   const getAIScore = () => {
     let score = 70;
     if (train.price <= 29) score += 20;
@@ -48,82 +80,79 @@ export function TrainCard({
   const aiScore = getAIScore();
 
   return (
-    <Animated.View entering={FadeInRight.delay(delay).duration(300)}>
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.cardContainer,
-          pressed && styles.cardPressed,
-        ]}
+    <Animated.View entering={FadeInRight.delay(delay).duration(300).springify()}>
+      <AnimatedPressable
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[styles.cardContainer, animatedStyle]}
       >
-        <View style={styles.container}>
-          {/* Top row: Train number, AI badge, and occupancy */}
-          <View style={styles.topRow}>
-            <View style={styles.trainInfo}>
-              <Text style={styles.trainNumber}>{train.trainNumber}</Text>
-              {train.isRecommended && showRecommendation && (
-                <LinearGradient
-                  colors={[Colors.primary, Colors.primaryDark]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.recommendedBadge}
-                >
-                  <Ionicons name="sparkles" size={10} color="#fff" />
-                  <Text style={styles.recommendedText}>IA recommande</Text>
-                </LinearGradient>
-              )}
-            </View>
-            <View style={styles.scoreAndOccupancy}>
-              <View style={styles.aiScoreBadge}>
-                <Text style={styles.aiScoreText}>{aiScore}</Text>
-                <Text style={styles.aiScoreLabel}>Score IA</Text>
+        {/* Header Row */}
+        <View style={styles.headerRow}>
+          <View style={styles.trainMeta}>
+            <Text style={styles.trainNumber}>{train.trainNumber}</Text>
+            {train.isRecommended && showRecommendation && (
+              <View style={styles.recommendedBadge}>
+                <Ionicons name="sparkles" size={10} color={Colors.primary} />
+                <Text style={styles.recommendedText}>Recommandé</Text>
               </View>
-              <OccupancyGauge level={train.occupancy} />
-            </View>
+            )}
           </View>
 
-          {/* Main content: Times and route */}
-          <View style={styles.mainContent}>
-            <View style={styles.timeBlock}>
-              <Text style={styles.time}>{formatTime(train.departure.time)}</Text>
-              <Text style={styles.station} numberOfLines={1}>
-                {compact ? train.departure.station.code : train.departure.station.city}
-              </Text>
-              {train.departure.platform && !compact && (
-                <Text style={styles.platform}>Voie {train.departure.platform}</Text>
-              )}
+          <View style={styles.indicators}>
+            <View style={styles.aiScoreBadge}>
+              <Text style={styles.aiScoreValue}>{aiScore}</Text>
+              <Text style={styles.aiScoreLabel}>Score</Text>
             </View>
+            <OccupancyGauge level={train.occupancy} />
+          </View>
+        </View>
 
-            <View style={styles.journeyLine}>
-              <View style={styles.dot} />
-              <View style={styles.line} />
-              <View style={styles.durationBadge}>
+        {/* Journey Timeline */}
+        <View style={styles.journeyRow}>
+          <View style={styles.timeBlock}>
+            <Text style={styles.time}>{formatTime(train.departure.time)}</Text>
+            <Text style={styles.station} numberOfLines={1}>
+              {compact ? train.departure.station.code : train.departure.station.city}
+            </Text>
+            {train.departure.platform && !compact && (
+              <Text style={styles.platform}>Voie {train.departure.platform}</Text>
+            )}
+          </View>
+
+          <View style={styles.timeline}>
+            <View style={styles.timelineDot} />
+            <View style={styles.timelineLine}>
+              <View style={styles.durationPill}>
                 <Text style={styles.durationText}>{formatDuration(train.duration)}</Text>
               </View>
-              <View style={styles.line} />
-              <Ionicons name="train" size={16} color={Colors.primary} />
             </View>
-
-            <View style={[styles.timeBlock, styles.timeBlockRight]}>
-              <Text style={styles.time}>{formatTime(train.arrival.time)}</Text>
-              <Text style={styles.station} numberOfLines={1}>
-                {compact ? train.arrival.station.code : train.arrival.station.city}
-              </Text>
-              {train.arrival.platform && !compact && (
-                <Text style={styles.platform}>Voie {train.arrival.platform}</Text>
-              )}
+            <View style={styles.trainIconWrapper}>
+              <Ionicons name="train" size={14} color={Colors.primary} />
             </View>
           </View>
 
-          {/* Bottom row: Price and AI recommendation */}
-          <View style={styles.bottomRow}>
-            <View style={styles.priceContainer}>
-              <Text style={[styles.price, { color: getPriceColor() }]}>
-                {train.price}€
-              </Text>
+          <View style={[styles.timeBlock, styles.timeBlockRight]}>
+            <Text style={styles.time}>{formatTime(train.arrival.time)}</Text>
+            <Text style={styles.station} numberOfLines={1}>
+              {compact ? train.arrival.station.code : train.arrival.station.city}
+            </Text>
+            {train.arrival.platform && !compact && (
+              <Text style={styles.platform}>Voie {train.arrival.platform}</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Footer Row */}
+        <View style={styles.footerRow}>
+          <View style={styles.priceSection}>
+            <View style={styles.priceDisplay}>
               {train.originalPrice && train.originalPrice > train.price && (
                 <Text style={styles.originalPrice}>{train.originalPrice}€</Text>
               )}
+              <Text style={[styles.price, { color: getPriceColor() }]}>
+                {train.price}€
+              </Text>
             </View>
 
             {train.priceRecommendation && getPriceLabel() && (
@@ -133,116 +162,99 @@ export function TrainCard({
                   {
                     backgroundColor:
                       train.priceRecommendation === 'buy_now'
-                        ? Colors.successLight
-                        : Colors.warningLight,
+                        ? Colors.successMuted
+                        : Colors.warningMuted,
                   },
                 ]}
               >
                 <Ionicons
-                  name={
-                    train.priceRecommendation === 'buy_now'
-                      ? 'checkmark-circle'
-                      : 'trending-down'
-                  }
-                  size={14}
-                  color={
-                    train.priceRecommendation === 'buy_now'
-                      ? Colors.success
-                      : Colors.warning
-                  }
+                  name={train.priceRecommendation === 'buy_now' ? 'checkmark-circle' : 'time-outline'}
+                  size={12}
+                  color={train.priceRecommendation === 'buy_now' ? Colors.success : Colors.warning}
                 />
                 <Text
                   style={[
                     styles.priceBadgeText,
-                    {
-                      color:
-                        train.priceRecommendation === 'buy_now'
-                          ? Colors.success
-                          : Colors.warning,
-                    },
+                    { color: train.priceRecommendation === 'buy_now' ? Colors.success : Colors.warning },
                   ]}
                 >
                   {getPriceLabel()}
                 </Text>
               </View>
             )}
-
-            {!compact && (
-              <View style={styles.amenities}>
-                {train.amenities.includes('wifi') && (
-                  <View style={styles.amenityBadge}>
-                    <Ionicons name="wifi" size={12} color={Colors.textMuted} />
-                  </View>
-                )}
-                {train.amenities.includes('power') && (
-                  <View style={styles.amenityBadge}>
-                    <Ionicons name="flash" size={12} color={Colors.textMuted} />
-                  </View>
-                )}
-                {train.amenities.includes('bar') && (
-                  <View style={styles.amenityBadge}>
-                    <Ionicons name="restaurant" size={12} color={Colors.textMuted} />
-                  </View>
-                )}
-                {train.amenities.includes('quiet') && (
-                  <View style={styles.amenityBadge}>
-                    <Ionicons name="volume-mute" size={12} color={Colors.textMuted} />
-                  </View>
-                )}
-              </View>
-            )}
           </View>
+
+          {!compact && (
+            <View style={styles.amenities}>
+              {train.amenities.includes('wifi') && (
+                <View style={styles.amenityIcon}>
+                  <Ionicons name="wifi" size={14} color={Colors.textTertiary} />
+                </View>
+              )}
+              {train.amenities.includes('power') && (
+                <View style={styles.amenityIcon}>
+                  <Ionicons name="flash" size={14} color={Colors.textTertiary} />
+                </View>
+              )}
+              {train.amenities.includes('bar') && (
+                <View style={styles.amenityIcon}>
+                  <Ionicons name="restaurant" size={14} color={Colors.textTertiary} />
+                </View>
+              )}
+              {train.amenities.includes('quiet') && (
+                <View style={styles.amenityIcon}>
+                  <Ionicons name="volume-mute" size={14} color={Colors.textTertiary} />
+                </View>
+              )}
+            </View>
+          )}
+
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </View>
-      </Pressable>
+      </AnimatedPressable>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   cardContainer: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: BorderRadius.lg,
-    ...Shadows.small,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
     padding: Spacing.md,
+    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: Spacing.smd,
   },
-  cardPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  container: {
-    gap: Spacing.sm,
-  },
-  topRow: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  trainInfo: {
+  trainMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
   },
   trainNumber: {
-    ...Typography.caption,
+    ...Typography.captionMedium,
     color: Colors.textSecondary,
-    fontWeight: '500',
   },
   recommendedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: Colors.primaryGhost,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: BorderRadius.full,
   },
   recommendedText: {
-    ...Typography.small,
-    color: '#fff',
+    ...Typography.micro,
+    color: Colors.primary,
     fontWeight: '600',
   },
-  scoreAndOccupancy: {
+  indicators: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
@@ -250,25 +262,24 @@ const styles = StyleSheet.create({
   aiScoreBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.aiGlow,
+    gap: 3,
+    backgroundColor: Colors.primaryGhost,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: BorderRadius.sm,
   },
-  aiScoreText: {
-    ...Typography.smallBold,
+  aiScoreValue: {
+    ...Typography.footnoteMedium,
     color: Colors.primary,
+    fontWeight: '700',
   },
   aiScoreLabel: {
-    ...Typography.small,
+    ...Typography.micro,
     color: Colors.primary,
   },
-  mainContent: {
+  journeyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.xs,
   },
   timeBlock: {
     flex: 1,
@@ -278,63 +289,81 @@ const styles = StyleSheet.create({
   },
   time: {
     ...Typography.h3,
-    color: Colors.textPrimary,
+    color: Colors.navy,
+    fontWeight: '700',
   },
   station: {
     ...Typography.caption,
     color: Colors.textSecondary,
+    marginTop: 2,
   },
   platform: {
-    ...Typography.small,
+    ...Typography.footnote,
     color: Colors.textMuted,
     marginTop: 2,
   },
-  journeyLine: {
-    flex: 1.5,
+  timeline: {
+    flex: 1.2,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: Spacing.sm,
   },
-  dot: {
+  timelineDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: Colors.primary,
   },
-  line: {
+  timelineLine: {
     flex: 1,
     height: 2,
-    backgroundColor: Colors.divider,
-  },
-  durationBadge: {
-    backgroundColor: Colors.backgroundTertiary,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.neutral200,
+    position: 'relative',
     marginHorizontal: 4,
   },
+  durationPill: {
+    position: 'absolute',
+    top: -10,
+    left: '50%',
+    transform: [{ translateX: -24 }],
+    backgroundColor: Colors.backgroundSecondary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
   durationText: {
-    ...Typography.small,
+    ...Typography.micro,
     color: Colors.textSecondary,
     fontWeight: '500',
   },
-  bottomRow: {
+  trainIconWrapper: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.primaryGhost,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Spacing.sm,
+    paddingTop: Spacing.smd,
     borderTopWidth: 1,
     borderTopColor: Colors.divider,
   },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+  priceSection: {
+    flex: 1,
     gap: Spacing.xs,
   },
+  priceDisplay: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: Spacing.sm,
+  },
   price: {
-    ...Typography.h2,
+    fontSize: 22,
     fontWeight: '700',
+    letterSpacing: -0.3,
   },
   originalPrice: {
     ...Typography.caption,
@@ -344,24 +373,26 @@ const styles = StyleSheet.create({
   priceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: 4,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: BorderRadius.sm,
   },
   priceBadgeText: {
-    ...Typography.small,
+    ...Typography.micro,
     fontWeight: '600',
   },
   amenities: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 6,
+    marginRight: Spacing.sm,
   },
-  amenityBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.backgroundTertiary,
+  amenityIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: Colors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
