@@ -103,7 +103,7 @@ function TabButton({ tab, isActive, onPress }: TabButtonProps) {
     transform: [
       { translateX: interpolate(labelWidth.value, [0, 1], [-4, 0]) },
     ],
-    maxWidth: interpolate(labelWidth.value, [0, 1], [0, 80]),
+    maxWidth: interpolate(labelWidth.value, [0, 1], [0, 100]),
   }));
 
   const backgroundStyle = useAnimatedStyle(() => ({
@@ -169,8 +169,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+    paddingBottom: Platform.OS === 'web' ? 16 : Platform.OS === 'ios' ? 34 : 12,
     paddingHorizontal: Spacing.md,
+    // Extra bottom padding for mobile Safari (env safe area)
+    ...(Platform.OS === 'web' ? { paddingBottom: 'max(16px, env(safe-area-inset-bottom, 16px))' } as any : {}),
   },
   blur: {
     position: 'absolute',

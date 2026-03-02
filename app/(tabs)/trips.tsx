@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    paddingBottom: 120,
   },
   title: {
     ...Typography.h1,

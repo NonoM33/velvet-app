@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   },
   messagesContent: {
     padding: Spacing.md,
-    paddingBottom: 20,
+    paddingBottom: 120,
   },
   bottomSpacer: {
     height: 20,
